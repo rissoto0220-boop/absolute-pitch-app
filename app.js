@@ -1,6 +1,7 @@
 import { normalizeParticipantId, isValidParticipantId } from "./src/shared/participant-id.js";
 import { createQuestionTimer } from "./src/shared/question-timer.js";
 import { playStimulus } from "./src/shared/audio-player.js";
+import { createAnswerLock } from "./src/shared/answer-lock.js";
 import { noteByNumber, PRACTICE_STIMULUS_NUMBERS } from "./src/absolute-pitch/notes.js";
 import {
   TOTAL_QUESTIONS,
@@ -135,15 +136,14 @@ function showQuestion({ mode, note }, onResult) {
       </div>
     </div>`;
 
-  let answered = false;
+  const answerLock = createAnswerLock();
   let selectedAnswer = null;
 
   const buttons = [...document.querySelectorAll(".answer")];
   buttons.forEach((btn) => btn.addEventListener("click", () => handleAnswer(btn)));
 
   function handleAnswer(button) {
-    if (answered) return;
-    answered = true;
+    if (!answerLock.tryLock()) return;
     selectedAnswer = button.dataset.answer;
     buttons.forEach((b) => { b.disabled = true; });
     button.classList.add("selected");
@@ -156,6 +156,7 @@ function showQuestion({ mode, note }, onResult) {
       createQuestionTimer({
         durationMs: QUESTION_MS,
         onQuestionEnd: (elapsedMs) => {
+          const answered = answerLock.isLocked();
           const outcome = !answered ? "timeout" : (selectedAnswer === note.answer ? "correct" : "incorrect");
           onResult({
             outcome,
@@ -166,11 +167,23 @@ function showQuestion({ mode, note }, onResult) {
       });
     })
     .catch(() => {
-      document.getElementById("status").textContent = `音声を再生できませんでした(${note.filename})。ファイルの配置を確認してください。`;
-      document.getElementById("status").classList.add("error");
-      buttons.forEach((b) => { b.disabled = true; });
       // 再生失敗時は onResult を呼ばず進行を止める(フェーズ5で「中断」として保存する予定)。
+      showPlaybackError(note);
     });
+}
+
+function showPlaybackError(note) {
+  screenEl.innerHTML = `
+    <div class="panel center">
+      <h2>音声を再生できませんでした</h2>
+      <p>問題の音声ファイル(${escapeHtml(note.filename)})の再生に失敗しました。</p>
+      <p class="note">
+        この問題は誤回答やタイムアウトとしては記録されません。<br>
+        お手数ですが、最初からやり直してください。
+      </p>
+      <div class="actions centered"><button id="restart" class="primary">最初からやり直す</button></div>
+    </div>`;
+  document.getElementById("restart").addEventListener("click", () => { participantId = ""; showIdEntry(); });
 }
 
 // --- 本番開始確認(仕様10章) ---
