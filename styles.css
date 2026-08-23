@@ -32,6 +32,7 @@ input:focus { outline: 3px solid #9ec1ff; border-color: #356ad8; }
 .notice { background: #f4f7fb; border-left: 5px solid #356ad8; padding: 14px 16px; border-radius: 10px; margin-bottom: 16px; }
 .status { min-height: 42px; text-align: center; font-weight: 700; color: #536179; }
 .status.error { color: #b42318; }
+.score { font-size: clamp(3rem, 10vw, 6rem); margin: 25px 0; font-weight: 900; color: #2258c7; }
 .actions.centered { justify-content: center; }
 
 .answer-grid {

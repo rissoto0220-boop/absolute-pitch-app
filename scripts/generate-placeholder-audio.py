@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """開発用の代替音(サイン波)を生成する一時的なスクリプト。
 
-フェーズ2の時点でプロジェクト内に正式なピアノ音源WAVがまだないため、
-練習3問(D2, F4, A#6)だけ、動作確認用の代替音をこのスクリプトで生成する。
-参照用デモに含まれる音源はコピーしていない(新規生成)。
+プロジェクト内に正式なピアノ音源WAVがまだないため、C2〜H6の60音すべてについて、
+動作確認用の代替音をこのスクリプトで生成する。参照用デモに含まれる音源はコピーしていない(新規生成)。
 
-正式WAVが揃ったら public/sounds/ 内の該当ファイルを正式WAVに差し替え、
+正式WAVが揃ったら public/sounds/ 内の同名ファイルを正式WAVに差し替え、
 このスクリプトは不要になる(削除してよい)。
 
 Python標準ライブラリのみを使用し、追加のインストールは不要。
@@ -25,7 +24,9 @@ NOTE_INDEX = {
     "Fis": 6, "G": 7, "Gis": 8, "A": 9, "Ais": 10, "H": 11,
 }
 
-PRACTICE_NOTES = ["D2", "F4", "Ais6"]
+NOTE_NAMES = ["C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "Ais", "H"]
+OCTAVES = [2, 3, 4, 5, 6]
+ALL_NOTES = [f"{name}{octave}" for octave in OCTAVES for name in NOTE_NAMES]
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "public" / "sounds"
 
@@ -61,11 +62,12 @@ def generate_wav(path, frequency):
 
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    for german_note in PRACTICE_NOTES:
+    for german_note in ALL_NOTES:
         frequency = frequency_for(german_note)
         path = OUTPUT_DIR / f"{german_note}.wav"
         generate_wav(path, frequency)
         print(f"generated {path} ({frequency:.2f} Hz)")
+    print(f"done: {len(ALL_NOTES)} files")
 
 
 if __name__ == "__main__":

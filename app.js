@@ -2,6 +2,13 @@ import { normalizeParticipantId, isValidParticipantId } from "./src/shared/parti
 import { createQuestionTimer } from "./src/shared/question-timer.js";
 import { playStimulus } from "./src/shared/audio-player.js";
 import { noteByNumber, PRACTICE_STIMULUS_NUMBERS } from "./src/absolute-pitch/notes.js";
+import {
+  TOTAL_QUESTIONS,
+  generateTestSequence,
+  pickRandomStart,
+  pickRandomDirection,
+  shouldForceTerminate,
+} from "./src/absolute-pitch/main-test.js";
 
 const ANSWERS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const QUESTION_MS = 3500;
@@ -79,23 +86,38 @@ function showPracticeIntro() {
       <p class="note">この練習は原則1回のみです。練習問題そのものの再実施はできません。</p>
       <div class="actions"><button id="practice-start" class="primary">練習を開始</button></div>
     </div>`;
-  document.getElementById("practice-start").addEventListener("click", () => {
-    runQuestions({ mode: "practice", stimulusNumbers: PRACTICE_STIMULUS_NUMBERS, index: 0, onFinished: showTestConfirm });
-  });
+  document.getElementById("practice-start").addEventListener("click", runPractice);
+}
+
+function runPractice() {
+  const notes = PRACTICE_STIMULUS_NUMBERS.map(noteByNumber);
+  step(0);
+
+  function step(index) {
+    if (index >= notes.length) {
+      showTestConfirm();
+      return;
+    }
+    const note = notes[index];
+    showQuestion({ mode: "practice", note }, (result) => {
+      console.log("[question result]", {
+        phase: "practice",
+        questionNumber: index + 1,
+        stimulusNumber: note.number,
+        stimulusNote: note.germanNote,
+        correctResponse: note.answer,
+        ...result,
+      });
+      step(index + 1);
+    });
+  }
 }
 
 // --- 出題画面(仕様11〜14章。練習・本番で共通) ---
+// onResult({ outcome, responseNote, responseTimeMs }) を1問終了ごとに1回呼ぶ。
+// 次に進むかどうかの判断(練習は常に進む、本番は13件で打ち切り)は呼び出し側が行う。
 
-function runQuestions({ mode, stimulusNumbers, index, onFinished }) {
-  if (index >= stimulusNumbers.length) {
-    onFinished();
-    return;
-  }
-  showQuestion({ mode, stimulusNumbers, index, onFinished });
-}
-
-function showQuestion({ mode, stimulusNumbers, index, onFinished }) {
-  const note = noteByNumber(stimulusNumbers[index]);
+function showQuestion({ mode, note }, onResult) {
   const title = mode === "practice" ? "練習" : "本番";
   const helpBlock = mode === "practice"
     ? `<div class="notice">
@@ -135,18 +157,11 @@ function showQuestion({ mode, stimulusNumbers, index, onFinished }) {
         durationMs: QUESTION_MS,
         onQuestionEnd: (elapsedMs) => {
           const outcome = !answered ? "timeout" : (selectedAnswer === note.answer ? "correct" : "incorrect");
-          // フェーズ5で保存を実装するまでの仮の記録(将来のCSV行に相当する情報)。
-          console.log("[question result]", {
-            phase: mode,
-            questionNumber: index + 1,
-            stimulusNumber: note.number,
-            stimulusNote: note.germanNote,
-            correctResponse: note.answer,
+          onResult({
+            outcome,
             responseNote: answered ? selectedAnswer : "",
             responseTimeMs: answered ? Math.round(elapsedMs) : "",
-            outcome,
           });
-          runQuestions({ mode, stimulusNumbers, index: index + 1, onFinished });
         },
       });
     })
@@ -154,6 +169,7 @@ function showQuestion({ mode, stimulusNumbers, index, onFinished }) {
       document.getElementById("status").textContent = `音声を再生できませんでした(${note.filename})。ファイルの配置を確認してください。`;
       document.getElementById("status").classList.add("error");
       buttons.forEach((b) => { b.disabled = true; });
+      // 再生失敗時は onResult を呼ばず進行を止める(フェーズ5で「中断」として保存する予定)。
     });
 }
 
@@ -178,7 +194,7 @@ function showTestConfirm() {
       </div>
     </div>`;
   document.getElementById("back-info").addEventListener("click", showPracticeRecap);
-  document.getElementById("main-start").addEventListener("click", showTestNotYetImplemented);
+  document.getElementById("main-start").addEventListener("click", startMainTest);
 }
 
 function showPracticeRecap() {
@@ -197,11 +213,63 @@ function showPracticeRecap() {
   document.getElementById("back-confirm").addEventListener("click", showTestConfirm);
 }
 
-function showTestNotYetImplemented() {
+// --- 本番60問(仕様11章・15章) ---
+
+function startMainTest() {
+  const startIndex = pickRandomStart();
+  const direction = pickRandomDirection();
+  const sequence = generateTestSequence(startIndex, direction);
+
+  let correctCount = 0;
+  let totalIncorrectCount = 0;
+
+  step(0);
+
+  function step(index) {
+    if (index >= sequence.length) {
+      finish("completed");
+      return;
+    }
+    const note = noteByNumber(sequence[index]);
+    showQuestion({ mode: "test", note }, (result) => {
+      if (result.outcome === "correct") correctCount += 1;
+      else totalIncorrectCount += 1; // incorrect または timeout
+
+      console.log("[question result]", {
+        phase: "test",
+        questionNumber: index + 1,
+        stimulusNumber: note.number,
+        stimulusNote: note.germanNote,
+        correctResponse: note.answer,
+        ...result,
+        incorrectTotalAfterQuestion: totalIncorrectCount,
+        sequenceStartNumber: sequence[0],
+        sequenceDirection: direction === 1 ? "forward" : "reverse",
+      });
+
+      // 13件到達チェックを60問完了チェックより先に行うことで、
+      // 60問目で同時に13件目に達した場合は自然に「強制終了」が優先される(既存の確定事項)。
+      if (shouldForceTerminate(totalIncorrectCount)) {
+        finish("forced_termination");
+        return;
+      }
+      step(index + 1);
+    });
+  }
+
+  function finish(sessionStatus) {
+    // フェーズ5で保存を実装するまでの仮の記録。session_statusは参加者には表示しない(仕様16章)。
+    console.log("[test finished]", { sessionStatus, correctCount, totalQuestions: TOTAL_QUESTIONS });
+    showResult(correctCount);
+  }
+}
+
+function showResult(correctCount) {
   screenEl.innerHTML = `
     <div class="panel center">
-      <h2>本番はフェーズ3で実装予定です</h2>
-      <p class="note">この画面はフェーズ2のプレースホルダーです。60問の出題・強制終了・結果表示は次のフェーズで実装します。</p>
+      <h2>テストが終了しました</h2>
+      <p>正解数</p>
+      <div class="score">${correctCount} / ${TOTAL_QUESTIONS}</div>
       <div class="actions centered"><button id="restart" class="primary">最初からやり直す</button></div>
     </div>`;
   document.getElementById("restart").addEventListener("click", () => { participantId = ""; showIdEntry(); });
