@@ -10,12 +10,33 @@ import {
   pickRandomDirection,
   shouldForceTerminate,
 } from "./src/absolute-pitch/main-test.js";
+import {
+  startSession,
+  beginQuestion,
+  finalizeQuestion,
+  finalizeSession,
+  persistParticipantData,
+} from "./src/absolute-pitch/session-store.js";
+import { toLocalIso } from "./src/shared/iso-time.js";
 
 const ANSWERS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const QUESTION_MS = 3500;
 
 let screenEl = null;
 let participantId = "";
+let participantData = null;
+let currentSession = null;
+
+function persistCurrentSession() {
+  persistParticipantData(participantId, participantData, localStorage);
+}
+
+function restartApp() {
+  participantId = "";
+  participantData = null;
+  currentSession = null;
+  showIdEntry();
+}
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -66,7 +87,14 @@ function showIdConfirm() {
       </div>
     </div>`;
   document.getElementById("edit").addEventListener("click", () => showIdEntry(participantId));
-  document.getElementById("accept").addEventListener("click", showPracticeIntro);
+  document.getElementById("accept").addEventListener("click", () => {
+    // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
+    // 新しいsession_idでこのセッションを開始する(仕様6.2・19章)。
+    const result = startSession(participantId, { storage: localStorage });
+    participantData = result.data;
+    currentSession = result.session;
+    showPracticeIntro();
+  });
 }
 
 // --- 練習説明(仕様9章) ---
@@ -100,25 +128,20 @@ function runPractice() {
       return;
     }
     const note = notes[index];
-    showQuestion({ mode: "practice", note }, (result) => {
-      console.log("[question result]", {
-        phase: "practice",
-        questionNumber: index + 1,
-        stimulusNumber: note.number,
-        stimulusNote: note.germanNote,
-        correctResponse: note.answer,
-        ...result,
-      });
+    showQuestion({ mode: "practice", note, questionNumber: index + 1 }, (result) => {
+      finalizeQuestion(currentSession, { ...result, incorrectTotalAfterQuestion: "" });
+      persistCurrentSession();
       step(index + 1);
     });
   }
 }
 
 // --- 出題画面(仕様11〜14章。練習・本番で共通) ---
-// onResult({ outcome, responseNote, responseTimeMs }) を1問終了ごとに1回呼ぶ。
-// 次に進むかどうかの判断(練習は常に進む、本番は13件で打ち切り)は呼び出し側が行う。
+// onResult({ outcome, responseNote, responseAt, responseTimeMs }) を1問終了ごとに1回呼ぶ。
+// 保存(finalizeQuestion)と次に進むかどうかの判断は呼び出し側が行う
+// (本番は誤回答累計などcaller側だけが知っている情報を記録に含める必要があるため)。
 
-function showQuestion({ mode, note }, onResult) {
+function showQuestion({ mode, note, questionNumber }, onResult) {
   const title = mode === "practice" ? "練習" : "本番";
   const helpBlock = mode === "practice"
     ? `<div class="notice">
@@ -138,6 +161,7 @@ function showQuestion({ mode, note }, onResult) {
 
   const answerLock = createAnswerLock();
   let selectedAnswer = null;
+  let responseAt = "";
 
   const buttons = [...document.querySelectorAll(".answer")];
   buttons.forEach((btn) => btn.addEventListener("click", () => handleAnswer(btn)));
@@ -145,6 +169,7 @@ function showQuestion({ mode, note }, onResult) {
   function handleAnswer(button) {
     if (!answerLock.tryLock()) return;
     selectedAnswer = button.dataset.answer;
+    responseAt = toLocalIso();
     buttons.forEach((b) => { b.disabled = true; });
     button.classList.add("selected");
     document.getElementById("status").textContent = "回答を受け付けました。次の問題までお待ちください。";
@@ -153,6 +178,17 @@ function showQuestion({ mode, note }, onResult) {
 
   playStimulus(`public/sounds/${note.filename}`)
     .then(() => {
+      // 実際に再生が始まった時点を「進行中の問題」として保存する(仕様19.2・23.2)。
+      beginQuestion(currentSession, {
+        phase: mode,
+        questionNumber,
+        stimulusNumber: note.number,
+        stimulusNote: note.germanNote,
+        stimulusFilename: note.filename,
+        correctResponse: note.answer,
+      });
+      persistCurrentSession();
+
       createQuestionTimer({
         durationMs: QUESTION_MS,
         onQuestionEnd: (elapsedMs) => {
@@ -161,13 +197,16 @@ function showQuestion({ mode, note }, onResult) {
           onResult({
             outcome,
             responseNote: answered ? selectedAnswer : "",
+            responseAt: answered ? responseAt : "",
             responseTimeMs: answered ? Math.round(elapsedMs) : "",
           });
         },
       });
     })
     .catch(() => {
-      // 再生失敗時は onResult を呼ばず進行を止める(フェーズ5で「中断」として保存する予定)。
+      // 再生失敗時はこの問題を誤回答・タイムアウトとして記録せず、セッション自体をinterruptedとして確定する(仕様8.5)。
+      finalizeSession(currentSession, "interrupted");
+      persistCurrentSession();
       showPlaybackError(note);
     });
 }
@@ -183,7 +222,7 @@ function showPlaybackError(note) {
       </p>
       <div class="actions centered"><button id="restart" class="primary">最初からやり直す</button></div>
     </div>`;
-  document.getElementById("restart").addEventListener("click", () => { participantId = ""; showIdEntry(); });
+  document.getElementById("restart").addEventListener("click", restartApp);
 }
 
 // --- 本番開始確認(仕様10章) ---
@@ -233,6 +272,12 @@ function startMainTest() {
   const direction = pickRandomDirection();
   const sequence = generateTestSequence(startIndex, direction);
 
+  // 出題順情報を保存する(仕様11.4)。
+  currentSession.sequenceStartPosition = startIndex;
+  currentSession.sequenceStartNumber = sequence[0];
+  currentSession.sequenceDirection = direction === 1 ? "forward" : "reverse";
+  persistCurrentSession();
+
   let correctCount = 0;
   let totalIncorrectCount = 0;
 
@@ -244,21 +289,12 @@ function startMainTest() {
       return;
     }
     const note = noteByNumber(sequence[index]);
-    showQuestion({ mode: "test", note }, (result) => {
+    showQuestion({ mode: "test", note, questionNumber: index + 1 }, (result) => {
       if (result.outcome === "correct") correctCount += 1;
       else totalIncorrectCount += 1; // incorrect または timeout
 
-      console.log("[question result]", {
-        phase: "test",
-        questionNumber: index + 1,
-        stimulusNumber: note.number,
-        stimulusNote: note.germanNote,
-        correctResponse: note.answer,
-        ...result,
-        incorrectTotalAfterQuestion: totalIncorrectCount,
-        sequenceStartNumber: sequence[0],
-        sequenceDirection: direction === 1 ? "forward" : "reverse",
-      });
+      finalizeQuestion(currentSession, { ...result, incorrectTotalAfterQuestion: totalIncorrectCount });
+      persistCurrentSession();
 
       // 13件到達チェックを60問完了チェックより先に行うことで、
       // 60問目で同時に13件目に達した場合は自然に「強制終了」が優先される(既存の確定事項)。
@@ -271,8 +307,9 @@ function startMainTest() {
   }
 
   function finish(sessionStatus) {
-    // フェーズ5で保存を実装するまでの仮の記録。session_statusは参加者には表示しない(仕様16章)。
-    console.log("[test finished]", { sessionStatus, correctCount, totalQuestions: TOTAL_QUESTIONS });
+    // session_statusは参加者には表示しない(仕様16章)が、保存データには記録する。
+    finalizeSession(currentSession, sessionStatus);
+    persistCurrentSession();
     showResult(correctCount);
   }
 }
@@ -285,7 +322,7 @@ function showResult(correctCount) {
       <div class="score">${correctCount} / ${TOTAL_QUESTIONS}</div>
       <div class="actions centered"><button id="restart" class="primary">最初からやり直す</button></div>
     </div>`;
-  document.getElementById("restart").addEventListener("click", () => { participantId = ""; showIdEntry(); });
+  document.getElementById("restart").addEventListener("click", restartApp);
 }
 
 function mount() {
