@@ -18,3 +18,12 @@ export function toLocalIso(date = new Date()) {
     `.${pad(date.getMilliseconds(), 3)}${sign}${offsetHours}:${offsetMins}`
   );
 }
+
+// CSVファイル名用の日時(例: 20260823_153525、仕様22.3)。コロンはファイル名に使えない
+// ことがあるため含めない。
+export function toFilenameTimestamp(date = new Date()) {
+  return (
+    `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}` +
+    `_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`
+  );
+}

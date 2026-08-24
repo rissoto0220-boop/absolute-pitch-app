@@ -24,8 +24,8 @@ p { line-height: 1.7; }
 
 .field { margin: 24px 0; }
 label { display: block; font-weight: 700; margin-bottom: 8px; }
-input { width: 100%; padding: 15px 16px; border: 2px solid #c5cfde; border-radius: 12px; font-size: 1.15rem; text-transform: uppercase; font: inherit; }
-input:focus { outline: 3px solid #9ec1ff; border-color: #356ad8; }
+.field input { width: 100%; padding: 15px 16px; border: 2px solid #c5cfde; border-radius: 12px; font-size: 1.15rem; text-transform: uppercase; font: inherit; }
+.field input:focus { outline: 3px solid #9ec1ff; border-color: #356ad8; }
 .error { color: #b42318; font-weight: 700; min-height: 1.5em; }
 .id-card { font-size: 2rem; font-weight: 800; letter-spacing: .08em; padding: 24px; background: #f4f7fb; border-radius: 16px; text-align: center; }
 .instructions { margin: 20px 0; padding-left: 1.4em; line-height: 1.9; }
@@ -34,6 +34,13 @@ input:focus { outline: 3px solid #9ec1ff; border-color: #356ad8; }
 .status.error { color: #b42318; }
 .score { font-size: clamp(3rem, 10vw, 6rem); margin: 25px 0; font-weight: 900; color: #2258c7; }
 .actions.centered { justify-content: center; }
+
+.checkbox { display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 16px 0; }
+.checkbox input { width: 18px; height: 18px; padding: 0; border: 2px solid #c5cfde; border-radius: 4px; }
+.checkbox input:focus { outline: 3px solid #9ec1ff; }
+.history-list { list-style: none; margin: 16px 0; padding: 4px 14px; background: #f4f7fb; border-radius: 10px; }
+.history-list li { padding: 10px 0; border-bottom: 1px solid #dfe6f0; }
+.history-list li:last-child { border-bottom: none; }
 
 .answer-grid {
   --wheel-size: min(70vw, 430px);

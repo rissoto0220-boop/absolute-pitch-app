@@ -18,9 +18,20 @@ import {
   persistParticipantData,
 } from "./src/absolute-pitch/session-store.js";
 import { toLocalIso } from "./src/shared/iso-time.js";
+import {
+  buildHistorySummary,
+  buildResponseDetailRows,
+  buildSessionHistoryRows,
+  buildCsvFilename,
+  RESPONSE_DETAIL_HEADERS,
+  SESSION_HISTORY_HEADERS,
+} from "./src/absolute-pitch/reports.js";
+import { toCsv, downloadTextFile } from "./src/shared/csv.js";
+import { formatDisplayDateTime } from "./src/shared/display-format.js";
 
 const ANSWERS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const QUESTION_MS = 3500;
+const INTER_QUESTION_GAP_MS = 1000; // 問題間の間隔(仕様13.4)
 
 let screenEl = null;
 let participantId = "";
@@ -155,13 +166,15 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
       ${helpBlock}
       <p id="status" class="status">音を再生しています。聞こえた音名を選んでください。</p>
       <div class="answer-grid">
-        ${ANSWERS.map((a, i) => `<button class="answer" style="--i:${i}" data-answer="${a}" aria-label="${a}">${a}</button>`).join("")}
+        ${ANSWERS.map((a, i) => `<button class="answer" style="--i:${i}" data-answer="${a}" aria-label="${a}" disabled>${a}</button>`).join("")}
       </div>
     </div>`;
 
   const answerLock = createAnswerLock();
   let selectedAnswer = null;
   let responseAt = "";
+  let responseTimeMs = "";
+  let timer = null; // 再生開始後にセットされる(回答時刻の基準はここから測る、仕様13.1)
 
   const buttons = [...document.querySelectorAll(".answer")];
   buttons.forEach((btn) => btn.addEventListener("click", () => handleAnswer(btn)));
@@ -170,6 +183,9 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
     if (!answerLock.tryLock()) return;
     selectedAnswer = button.dataset.answer;
     responseAt = toLocalIso();
+    // 反応時間は、クリックした瞬間にタイマーの経過時間を読み取って確定する。
+    // 3.5秒後のonQuestionEnd発火時点の経過時間(常に約3500ms)を使ってはならない。
+    responseTimeMs = timer ? Math.round(timer.elapsedSince()) : 0;
     buttons.forEach((b) => { b.disabled = true; });
     button.classList.add("selected");
     document.getElementById("status").textContent = "回答を受け付けました。次の問題までお待ちください。";
@@ -189,17 +205,26 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
       });
       persistCurrentSession();
 
-      createQuestionTimer({
+      // 回答受付は再生開始と同時に始める(仕様13.2)。それまでボタンは無効にしておく。
+      buttons.forEach((b) => { b.disabled = false; });
+
+      timer = createQuestionTimer({
         durationMs: QUESTION_MS,
-        onQuestionEnd: (elapsedMs) => {
+        onQuestionEnd: () => {
           const answered = answerLock.isLocked();
           const outcome = !answered ? "timeout" : (selectedAnswer === note.answer ? "correct" : "incorrect");
-          onResult({
-            outcome,
-            responseNote: answered ? selectedAnswer : "",
-            responseAt: answered ? responseAt : "",
-            responseTimeMs: answered ? Math.round(elapsedMs) : "",
-          });
+          // 3.5秒経過の瞬間に、回答済みかどうかによらず全ボタンを無効化する(消去はしない)。
+          // この直後の短い間隔(仕様13.4)を置いてから次の問題へ進めることで、遅れたクリックが
+          // 次の問題の回答として記録されるのを防ぐ。
+          buttons.forEach((b) => { b.disabled = true; });
+          setTimeout(() => {
+            onResult({
+              outcome,
+              responseNote: answered ? selectedAnswer : "",
+              responseAt: answered ? responseAt : "",
+              responseTimeMs: answered ? responseTimeMs : "",
+            });
+          }, INTER_QUESTION_GAP_MS);
         },
       });
     })
@@ -320,9 +345,65 @@ function showResult(correctCount) {
       <h2>テストが終了しました</h2>
       <p>正解数</p>
       <div class="score">${correctCount} / ${TOTAL_QUESTIONS}</div>
-      <div class="actions centered"><button id="restart" class="primary">最初からやり直す</button></div>
+      <div class="actions centered">
+        <button id="history" class="secondary">履歴・CSVを見る</button>
+        <button id="restart" class="primary">最初からやり直す</button>
+      </div>
     </div>`;
+  document.getElementById("history").addEventListener("click", showHistory);
   document.getElementById("restart").addEventListener("click", restartApp);
+}
+
+// --- 履歴・CSV出力(仕様20〜22章) ---
+
+function showHistory() {
+  let includeInterruptedInList = false;
+  let includeInterruptedInCsv = false;
+
+  function formatRow(row) {
+    const scoreText = row.sessionStatus === "interrupted" ? "中断" : `${row.correctCount} / ${TOTAL_QUESTIONS}`;
+    return `<li>第${row.attemptNumber}回 — ${escapeHtml(formatDisplayDateTime(row.startedAt))} — ${scoreText}</li>`;
+  }
+
+  function render() {
+    const summary = buildHistorySummary(participantData.sessions, includeInterruptedInList);
+    const listHtml = summary.length
+      ? `<ul class="history-list">${summary.map(formatRow).join("")}</ul>`
+      : `<p class="note">まだ記録がありません。</p>`;
+
+    screenEl.innerHTML = `
+      <div class="panel">
+        <h2>履歴・CSV出力</h2>
+        <label class="checkbox"><input type="checkbox" id="toggle-list-interrupted"${includeInterruptedInList ? " checked" : ""}> 中断した履歴を表示</label>
+        ${listHtml}
+        <div class="notice">回答詳細CSVとテスト履歴CSVの両方を保存してください。</div>
+        <label class="checkbox"><input type="checkbox" id="toggle-csv-interrupted"${includeInterruptedInCsv ? " checked" : ""}> 中断した履歴を含める</label>
+        <div class="actions">
+          <button id="download-responses" class="secondary">回答詳細CSVをダウンロード</button>
+          <button id="download-sessions" class="secondary">テスト履歴CSVをダウンロード</button>
+        </div>
+        <div class="actions"><button id="restart" class="primary">最初からやり直す</button></div>
+      </div>`;
+
+    document.getElementById("toggle-list-interrupted").addEventListener("change", (e) => {
+      includeInterruptedInList = e.target.checked;
+      render();
+    });
+    document.getElementById("toggle-csv-interrupted").addEventListener("change", (e) => {
+      includeInterruptedInCsv = e.target.checked;
+    });
+    document.getElementById("download-responses").addEventListener("click", () => {
+      const rows = buildResponseDetailRows(participantId, participantData.sessions, includeInterruptedInCsv);
+      downloadTextFile(buildCsvFilename(participantId, "responses"), toCsv(RESPONSE_DETAIL_HEADERS, rows));
+    });
+    document.getElementById("download-sessions").addEventListener("click", () => {
+      const rows = buildSessionHistoryRows(participantId, participantData.sessions, includeInterruptedInCsv);
+      downloadTextFile(buildCsvFilename(participantId, "sessions"), toCsv(SESSION_HISTORY_HEADERS, rows));
+    });
+    document.getElementById("restart").addEventListener("click", restartApp);
+  }
+
+  render();
 }
 
 function mount() {
