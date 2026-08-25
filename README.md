@@ -2,7 +2,7 @@
 
 これは研究用の絶対音感テストアプリの本番プロジェクトです。`absolute-pitch-demo` は画面遷移・操作感を確認するための参照用デモであり、このフォルダーとは別物です(デモは変更しません)。
 
-このプロジェクトの仕様は `absolute-pitch-test/absolute-pitch-test-spec.md` を基準とします。
+このプロジェクトの仕様は `tonal-sense-docs/absolute-pitch-test-spec.md` を基準とします。
 
 ## 現在の状態(フェーズ7)
 
