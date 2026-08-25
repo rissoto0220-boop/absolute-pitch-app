@@ -2,7 +2,7 @@ import { normalizeParticipantId, isValidParticipantId } from "./src/shared/parti
 import { createQuestionTimer } from "./src/shared/question-timer.js";
 import { playStimulus } from "./src/shared/audio-player.js";
 import { createAnswerLock } from "./src/shared/answer-lock.js";
-import { noteByNumber, PRACTICE_STIMULUS_NUMBERS } from "./src/absolute-pitch/notes.js";
+import { noteByNumber, PRACTICE_STIMULUS_NUMBERS, ANSWERS } from "./src/absolute-pitch/notes.js";
 import {
   TOTAL_QUESTIONS,
   generateTestSequence,
@@ -29,7 +29,6 @@ import {
 import { toCsv, downloadTextFile } from "./src/shared/csv.js";
 import { formatDisplayDateTime } from "./src/shared/display-format.js";
 
-const ANSWERS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const QUESTION_MS = 3500;
 const INTER_QUESTION_GAP_MS = 1000; // 問題間の間隔(仕様13.4)
 
