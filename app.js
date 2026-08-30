@@ -144,9 +144,9 @@ function showPracticeIntro() {
       <ul class="instructions">
         <li>音は1回だけ自動で再生されます。</li>
         <li>聞こえた音名のボタンを押してください。</li>
-        <li>回答時間は、音の再生開始から3.5秒です。</li>
+        <li>回答時間は、音の再生開始から3.0秒です。</li>
         <li>音の再生中でも回答できます。</li>
-        <li>早く回答しても、次の問題は3.5秒後に始まります。</li>
+        <li>早く回答しても、次の問題は3.0秒後に始まります。</li>
         <li>正解・不正解は表示しません。</li>
       </ul>
       <p class="note">この練習は原則1回のみです。練習問題そのものの再実施はできません。</p>
@@ -187,7 +187,7 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
   const title = mode === "practice" ? "練習" : "本番";
   const helpBlock = mode === "practice"
     ? `<div class="notice">
-        <strong>操作方法:</strong>聞こえた音名を選択してください。音は1回だけ、回答時間は3.5秒です。
+        <strong>操作方法:</strong>聞こえた音名を選択してください。音は1回だけ、回答時間は3.0秒です。
       </div>`
     : "";
 
@@ -216,7 +216,7 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
     selectedAnswer = button.dataset.answer;
     responseAt = toLocalIso();
     // 反応時間は、AudioContextの正確な時計を基準に、音源の再生予定時刻からの差で算出する
-    // (仕様13.3)。onQuestionEnd発火時点の経過時間(常に約3500ms)を使ってはならない。
+    // (仕様13.3)。onQuestionEnd発火時点の経過時間(常に約3000ms)を使ってはならない。
     responseTimeMs = stimulusStartedAt == null ? 0 : Math.round((audioContextTime() - stimulusStartedAt) * 1000);
     buttons.forEach((b) => { b.disabled = true; });
     button.classList.add("selected");
@@ -227,7 +227,7 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
   loadAudioBuffer(`public/sounds/${note.filename}`)
     .then((buffer) => {
       // コールドスタート対策として、少し先の時刻を狙って再生を予約する(相対音感と同じ対応。
-      // audio-buffer-player.js参照)。「進行中の問題として保存」「回答受付開始」「3.5秒タイマー
+      // audio-buffer-player.js参照)。「進行中の問題として保存」「回答受付開始」「3.0秒タイマー
       // 開始」は、この再生予定時刻に合わせて行う(仕様13.2「回答受付は再生開始と同時に始める」)。
       const { startedAt } = scheduleAudioBuffer(buffer, audioContextTime() + COLD_START_LEAD_SECONDS);
       stimulusStartedAt = startedAt;
@@ -252,7 +252,7 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
           onQuestionEnd: () => {
             const answered = answerLock.isLocked();
             const outcome = !answered ? "timeout" : (selectedAnswer === note.answer ? "correct" : "incorrect");
-            // 3.5秒経過の瞬間に、回答済みかどうかによらず全ボタンを無効化する(消去はしない)。
+            // 3.0秒経過の瞬間に、回答済みかどうかによらず全ボタンを無効化する(消去はしない)。
             // この直後の短い間隔(仕様13.4)を置いてから次の問題へ進めることで、遅れたクリックが
             // 次の問題の回答として記録されるのを防ぐ。
             buttons.forEach((b) => { b.disabled = true; });
@@ -320,7 +320,7 @@ function showPracticeRecap() {
       <h2>操作方法の確認</h2>
       <ul class="instructions">
         <li>音は各問題で1回だけ自動再生されます。</li>
-        <li>回答時間は音の再生開始から3.5秒です。</li>
+        <li>回答時間は音の再生開始から3.0秒です。</li>
         <li>音の再生中でも回答できます。</li>
         <li>正解・不正解は表示しません。</li>
       </ul>
