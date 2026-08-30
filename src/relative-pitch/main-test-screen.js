@@ -1,0 +1,120 @@
+// フェーズ5: 相対音感の本番12問(仕様 relative-pitch-test-spec.md §14・§15)。保存はフェーズ6で接続済み。
+import { renderAnswerPanel } from "../shared/answer-panel.js";
+import { runQuestionTimeline } from "./question-timeline.js";
+import { resumeAudioContext } from "../shared/audio-buffer-player.js";
+import { toLocalIso } from "../shared/iso-time.js";
+import { ANSWER_LABELS } from "./layout-comparison-screen.js";
+import { INTERVAL_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
+import { generateTestSequence, TOTAL_QUESTIONS } from "./question-generator.js";
+import { formatAccuracyLabel } from "./scoring.js";
+import * as sessionStore from "./session-store.js";
+
+// screenEl: 描画先のDOM要素。
+// layout: フェーズ2で選んだ回答レイアウト("circular"または"grid")。
+// session: このセッションの保存対象(練習と共通のセッション)。
+// persistSession: 保存を反映させるために呼ぶ関数。
+// onBack: 結果画面から戻る際に呼ぶ。
+export function showMainTestFlow({
+  screenEl,
+  layout = "circular",
+  session,
+  persistSession = () => {},
+  onBack = () => {},
+}) {
+  const sequence = generateTestSequence();
+  sessionStore.setGeneratedQuestionOrder(session, sequence);
+  persistSession();
+
+  let correctCount = 0;
+
+  // 本番開始時点でAudioContextを有効化する。resumeの完了(=時計が実際に動き出す)を待ってから
+  // 最初の問題を始める(practice-screen.jsと同じ理由。待たないとスケジュールがずれる)。
+  screenEl.innerHTML = `<div class="panel center"><p class="status">音声を準備しています…</p></div>`;
+  resumeAudioContext().then(() => {
+    runQuestion(0);
+  });
+
+  function runQuestion(index) {
+    if (index >= sequence.length) {
+      sessionStore.finalizeSession(session, "completed");
+      persistSession();
+      showResult();
+      return;
+    }
+    const question = sequence[index];
+
+    // 問題番号・総問題数は参加者に表示しない(仕様14.3)。
+    screenEl.innerHTML = `
+      <div class="panel">
+        <h2>本番</h2>
+        <p id="test-status" class="status">音を再生しています。しばらくお待ちください。</p>
+        <div id="answer-panel-container"></div>
+      </div>`;
+
+    const timeline = runQuestionTimeline(question, {
+      onStageStarted: (stage) => {
+        if (stage === "cadence") {
+          sessionStore.beginQuestion(session, {
+            phase: "test",
+            questionNumber: index + 1,
+            keyCode: question.keyCode,
+            keyBlockNumber: question.keyBlockNumber,
+            cadenceFilename: cadenceFilenameFor(question.keyCode),
+            referenceNote: question.referenceNote,
+            targetNote: question.targetNote,
+            intervalSemitones: question.intervalSemitones,
+            syllableCode: question.syllableCode,
+            displayLabel: question.displayLabel,
+            intervalLabel: question.intervalLabel,
+            scaleLabel: question.scaleLabel,
+          });
+        } else {
+          sessionStore.recordStageStarted(session, stage);
+        }
+        persistSession();
+      },
+      onAnswerable: () => {
+        document.getElementById("test-status").textContent = "聞こえた階名を選んでください。";
+        renderAnswerPanel({
+          container: document.getElementById("answer-panel-container"),
+          labels: ANSWER_LABELS,
+          layout,
+          onSelect: (label, labelIndex) => {
+            // 正解判定・保存には表示ラベルではなく半音差(内部コード相当)を使う(仕様10.2)。
+            timeline.submitAnswer(INTERVAL_SEMITONES[labelIndex]);
+          },
+        });
+      },
+      onResult: ({ responseCode: responseSemitone, responseTimeMs }) => {
+        const responseAt = toLocalIso();
+        const outcome = isCorrectAnswer(question, responseSemitone) ? "correct" : "incorrect";
+        if (outcome === "correct") correctCount += 1;
+        sessionStore.finalizeQuestion(session, { responseCode: responseSemitone, responseAt, responseTimeMs, outcome });
+        persistSession();
+        // 正誤は表示しない。選択済みボタンの青色表示と「回答を受け付けました」だけを示す(仕様14.2)。
+        document.getElementById("test-status").textContent = "回答を受け付けました。";
+      },
+      // 回答から1秒以上経過し、かつ目的音の再生が終わってから次の問題へ進む(仕様7.3)。
+      onSettled: () => runQuestion(index + 1),
+      onError: () => {
+        // 音源エラー時はセッションを中断扱いにする(仕様22.1)。
+        sessionStore.finalizeSession(session, "interrupted");
+        persistSession();
+        document.getElementById("test-status").textContent = "音声の読み込みに失敗しました。お手数ですが、最初からやり直してください。";
+      },
+    });
+  }
+
+  function showResult() {
+    screenEl.innerHTML = `
+      <div class="panel center">
+        <h2>テストが終了しました</h2>
+        <p>正答率</p>
+        <div class="score">${formatAccuracyLabel(correctCount, TOTAL_QUESTIONS)}</div>
+        <p>正解数</p>
+        <div class="score">${correctCount} / ${TOTAL_QUESTIONS}</div>
+        <div class="actions centered"><button id="back" class="primary">戻る</button></div>
+      </div>`;
+    document.getElementById("back").addEventListener("click", onBack);
+  }
+}

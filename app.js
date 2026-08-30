@@ -36,6 +36,14 @@ import { toCsv, downloadTextFile } from "./src/shared/csv.js";
 import { formatDisplayDateTime } from "./src/shared/display-format.js";
 import { showLayoutComparisonScreen } from "./src/relative-pitch/layout-comparison-screen.js";
 import { showQuestionTimelineDemoScreen } from "./src/relative-pitch/question-timeline-demo-screen.js";
+import { showPracticeFlow } from "./src/relative-pitch/practice-screen.js";
+import { showMainTestFlow } from "./src/relative-pitch/main-test-screen.js";
+import {
+  startSession as startRelativePitchSession,
+  loadParticipantData as loadRelativePitchParticipantData,
+  persistParticipantData as persistRelativePitchParticipantData,
+} from "./src/relative-pitch/session-store.js";
+import { hasCompletedSimplifiedSession } from "./src/relative-pitch/practice-history.js";
 
 const QUESTION_MS = 3000;
 const INTER_QUESTION_GAP_MS = 1000; // 問題間の間隔(仕様13.4)
@@ -103,8 +111,8 @@ function showIdConfirm() {
         <button id="edit" class="secondary">修正する</button>
         <button id="accept" class="primary">このIDで進む</button>
       </div>
-      <p class="note"><a href="#" id="dev-relative-pitch-preview">(開発中の確認用)相対音感の回答レイアウトを見る</a></p>
-      <p class="note"><a href="#" id="dev-relative-pitch-timeline">(開発中の確認用)相対音感の音声タイムラインを試す</a></p>
+      <p class="note"><a href="#" id="dev-relative-pitch-timeline">(開発中の確認用)相対音感の音声タイムラインだけを見る(保存なし)</a></p>
+      <p class="note"><a href="#" id="dev-relative-pitch-full">(開発中の確認用)相対音感テストを試す(保存あり)</a></p>
     </div>`;
   document.getElementById("edit").addEventListener("click", () => showIdEntry(participantId));
   document.getElementById("accept").addEventListener("click", () => {
@@ -115,22 +123,49 @@ function showIdConfirm() {
     currentSession = result.session;
     showPracticeIntro();
   });
-  // 相対音感フェーズ2(回答レイアウト比較)の手動確認用リンク。
-  // セッション開始やCSV保存とはまだ接続していない、確認専用の入口(将来のテスト選択画面で置き換える予定)。
-  document.getElementById("dev-relative-pitch-preview").addEventListener("click", (e) => {
-    e.preventDefault();
-    showLayoutComparisonScreen({
-      screenEl,
-      onConfirm: (layout) => {
-        alert(`選んだレイアウト: ${layout === "circular" ? "円環状" : "グリッド"}\n(この確認画面では保存されません)`);
-      },
-      onBack: () => showIdConfirm(),
-    });
-  });
-  // 相対音感フェーズ3(音声タイムライン)の手動確認用リンク。同じくセッション開始・保存とは未接続。
+  // 相対音感フェーズ3(音声タイムライン)の手動確認用リンク。保存とは未接続の、見た目・タイミング
+  // だけの確認用(将来のテスト選択画面で置き換える予定)。
   document.getElementById("dev-relative-pitch-timeline").addEventListener("click", (e) => {
     e.preventDefault();
     showQuestionTimelineDemoScreen({ screenEl, onBack: () => showIdConfirm() });
+  });
+  // 相対音感フェーズ6: 保存ありの一連の流れ(回答レイアウト選択→練習→本番)。
+  // セッションは練習・本番を通じて1つを使い回す(仕様17〜19章。絶対音感と同じ考え方)。
+  document.getElementById("dev-relative-pitch-full").addEventListener("click", (e) => {
+    e.preventDefault();
+    showLayoutComparisonScreen({
+      screenEl,
+      onBack: () => showIdConfirm(),
+      onConfirm: (layout) => {
+        // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
+        // (これから始めるセッション自体は完了済みに含めない)。
+        const existingData = loadRelativePitchParticipantData(participantId, localStorage);
+        const hasCompletedBefore = hasCompletedSimplifiedSession(existingData.sessions);
+
+        // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
+        // 新しいsession_idでこのセッションを開始する(仕様17.1)。
+        const result = startRelativePitchSession(participantId, { storage: localStorage, answerLayout: layout });
+        const relativeSession = result.session;
+        const persistRelativeSession = () => persistRelativePitchParticipantData(participantId, result.data, localStorage);
+
+        showPracticeFlow({
+          screenEl,
+          layout,
+          hasCompletedBefore,
+          session: relativeSession,
+          persistSession: persistRelativeSession,
+          onFinished: () => {
+            showMainTestFlow({
+              screenEl,
+              layout,
+              session: relativeSession,
+              persistSession: persistRelativeSession,
+              onBack: () => showIdConfirm(),
+            });
+          },
+        });
+      },
+    });
   });
 }
 
@@ -154,9 +189,14 @@ function showPracticeIntro() {
     </div>`;
   document.getElementById("practice-start").addEventListener("click", () => {
     // 参加者が最初に音声を伴う操作をするタイミングでAudioContextを有効化する
-    // (ブラウザの自動再生制限への対応。相対音感と同じ考え方)。
-    resumeAudioContext();
-    runPractice();
+    // (ブラウザの自動再生制限への対応)。resumeの完了(=時計が実際に動き出す)を待ってから
+    // 練習を始める。待たずに始めると、時計が一時停止したままの状態でスケジュールを計算してしまい、
+    // 後から時計が動き出した際にスケジュールが早く(または即座に)発火してしまう
+    // (相対音感の練習・本番画面で見つかったのと同じ不具合)。
+    screenEl.innerHTML = `<div class="panel center"><p class="status">音声を準備しています…</p></div>`;
+    resumeAudioContext().then(() => {
+      runPractice();
+    });
   });
 }
 
