@@ -5,7 +5,7 @@ import { buildQuestion } from "../../src/relative-pitch/intervals.js";
 
 // 実際のAudioContext・setTimeoutを使わず、経過時間を自分で進められる疑似環境を作る。
 // development-handover.md 12.3・12.4の「乱数やブラウザAPIを外部から渡せる構造にする」と同じ考え方。
-function createFakeEnv() {
+function createFakeEnv({ targetDurationSeconds = 2.0 } = {}) {
   let currentTime = 0; // AudioContextの時刻(秒)相当
   const loadedSrcs = [];
   const scheduledCalls = []; // { src, when }
@@ -15,7 +15,8 @@ function createFakeEnv() {
     audioContextTimeFn: () => currentTime,
     loadAudioBufferFn: (src) => {
       loadedSrcs.push(src);
-      return Promise.resolve({ __bufferFor: src }); // 中身は使わない、srcが分かればよいダミー
+      // durationは目的音(絶対音感の既存WAV)にだけ持たせる。カデンツ・基準音は使わないダミー。
+      return Promise.resolve({ __bufferFor: src, duration: targetDurationSeconds });
     },
     scheduleAudioBufferFn: (buffer, when) => {
       scheduledCalls.push({ src: buffer.__bufferFor, when });
@@ -85,6 +86,17 @@ test("読み込み完了後、同じ基準時刻からカデンツ(+0秒)・基�
   approxEqual(target.when, baseTime + 4, "目的音はカデンツの4秒後");
 });
 
+test("onStageStartedがcadence→reference→targetの順に呼ばれる(仕様17.2: 中断段階の把握用)", async () => {
+  const env = createFakeEnv();
+  const question = buildQuestion("C", 4);
+  const stages = [];
+
+  runQuestionTimeline(question, runOptions(env, { onStageStarted: (stage) => stages.push(stage) }));
+  await flushMicrotasks();
+
+  assert.deepEqual(stages, ["cadence", "reference", "target"]);
+});
+
 test("Key Fisの問題では、カデンツ・基準音のファイル名もFis用になる", async () => {
   const env = createFakeEnv();
   const question = buildQuestion("Fis", 4); // 練習3と同じ(Key Fis, ミ、目的音Ais4)
@@ -130,6 +142,55 @@ test("反応時間は、目的音の予定開始時刻からのAudioContext時�
 
   assert.equal(result.responseCode, "ミ");
   approxEqual(result.responseTimeMs, 350, "反応時間は約350ms");
+});
+
+test("onSettled: 早く回答した場合、目的音の再生終了時刻(回答から1秒後より遅い方)に予約される(仕様7.3)", async () => {
+  const env = createFakeEnv({ targetDurationSeconds: 2.0 });
+  const question = buildQuestion("C", 4);
+  let settledAt = null;
+
+  const timeline = runQuestionTimeline(question, runOptions(env, {
+    onSettled: () => { settledAt = env.audioContextTimeFn(); },
+  }));
+  await flushMicrotasks();
+
+  const targetWhen = env.scheduledCalls.find((c) => c.src === "public/sounds/E4.wav").when;
+  env.advance(targetWhen);
+  env.advance(0.35); // 目的音開始から0.35秒後に回答(目的音はあと1.65秒再生中)
+  timeline.submitAnswer("ミ");
+
+  // submitAnswer呼び出し時点でsetTimeoutFnが1回追加で呼ばれているはず(onAnswerable用と合わせて2回)。
+  assert.equal(env.timeouts.length, 2);
+  const settleTimeout = env.timeouts[1];
+  // 回答から1秒後(0.35+1=1.35秒後)より、目的音の再生終了(2.0秒後)の方が遅いので、そちらに合わせる。
+  approxEqual(settleTimeout.delay / 1000, 2.0 - 0.35, "目的音の再生終了までの残り時間で予約される");
+
+  env.advance(settleTimeout.delay / 1000); // 実際にその遅延分だけ時間が経過した状態を再現する
+  settleTimeout.fn();
+  approxEqual(settledAt, targetWhen + 2.0, "目的音の再生終了時刻で発火する");
+});
+
+test("onSettled: 回答が遅れた場合、回答から1秒後に予約される(仕様7.3)", async () => {
+  const env = createFakeEnv({ targetDurationSeconds: 2.0 });
+  const question = buildQuestion("C", 4);
+  let settledAt = null;
+
+  const timeline = runQuestionTimeline(question, runOptions(env, {
+    onSettled: () => { settledAt = env.audioContextTimeFn(); },
+  }));
+  await flushMicrotasks();
+
+  const targetWhen = env.scheduledCalls.find((c) => c.src === "public/sounds/E4.wav").when;
+  env.advance(targetWhen);
+  env.advance(1.9); // 目的音の再生終了(2.0秒)直前に回答
+  timeline.submitAnswer("ミ");
+
+  const settleTimeout = env.timeouts[1];
+  approxEqual(settleTimeout.delay / 1000, 1.0, "目的音の残り時間(0.1秒)より、回答から1秒の方が遅いのでそちらに合わせる");
+
+  env.advance(settleTimeout.delay / 1000);
+  settleTimeout.fn();
+  approxEqual(settledAt, targetWhen + 1.9 + 1.0, "回答から1秒後に発火する");
 });
 
 test("submitAnswerは最初の1回だけ受け付ける(仕様7.3: 二重回答を防ぐ)", async () => {
