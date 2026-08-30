@@ -42,6 +42,10 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
 .history-list li { padding: 10px 0; border-bottom: 1px solid #dfe6f0; }
 .history-list li:last-child { border-bottom: none; }
 
+/* --wheel-sizeは、widthだけでなく.answerのtransform(translateY)内でも使われている。
+   transformの中の%は「そのボタン自身のサイズ」に対する割合として解釈されてしまうため、
+   ここに%を使う値(例: 100%)を入れると円環が極端に縮む(手動確認で発見、2026-08-30)。
+   vwはどこで使っても画面幅基準のまま変わらないため、はみ出し対策はvwからの固定px差し引きで行う。 */
 .answer-grid {
   --wheel-size: min(70vw, 430px);
   --button-size: clamp(56px, 11vw, 76px);
@@ -75,7 +79,10 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
 .answer.selected { border-color: #2258c7; background: #dbe8ff; opacity: 1; }
 
 @media (max-width: 650px) {
-  .answer-grid { --wheel-size: min(88vw, 360px); --button-size: clamp(50px, 14vw, 62px); }
+  /* 100vwから、カード周囲の余白(app-shellのmargin32px+screenのpadding最大48px)を
+     安全側に見積もって110px差し引く。画面幅からの計算のため、はみ出しを防げる
+     (%ではなくvwのままにする理由は上記コメント参照)。 */
+  .answer-grid { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
   .answer { font-size: .95rem; }
 }
 
@@ -84,6 +91,7 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
 .answer-panel { position: relative; margin: 26px auto 8px; }
 
 .answer-panel--circular {
+  /* .answer-gridと同じ理由(上記コメント参照)でvwのままにする。 */
   --wheel-size: min(70vw, 430px);
   --button-size: clamp(56px, 11vw, 76px);
   width: var(--wheel-size);
@@ -129,6 +137,6 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
 .answer-panel__button.selected { border-color: #2258c7; background: #dbe8ff; opacity: 1; }
 
 @media (max-width: 650px) {
-  .answer-panel--circular { --wheel-size: min(88vw, 360px); --button-size: clamp(50px, 14vw, 62px); }
+  .answer-panel--circular { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
   .answer-panel__button { font-size: .95rem; }
 }
