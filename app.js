@@ -8,6 +8,7 @@ import {
   COLD_START_LEAD_SECONDS,
 } from "./src/shared/audio-buffer-player.js";
 import { createAnswerLock } from "./src/shared/answer-lock.js";
+import { escapeHtml } from "./src/shared/escape-html.js";
 import { noteByNumber, PRACTICE_STIMULUS_NUMBERS, ANSWERS } from "./src/absolute-pitch/notes.js";
 import {
   TOTAL_QUESTIONS,
@@ -44,6 +45,7 @@ import {
   persistParticipantData as persistRelativePitchParticipantData,
 } from "./src/relative-pitch/session-store.js";
 import { hasCompletedSimplifiedSession } from "./src/relative-pitch/practice-history.js";
+import { showHistoryScreen as showRelativePitchHistoryScreen } from "./src/relative-pitch/history-screen.js";
 
 const QUESTION_MS = 3000;
 const INTER_QUESTION_GAP_MS = 1000; // 問題間の間隔(仕様13.4)
@@ -62,10 +64,6 @@ function restartApp() {
   participantData = null;
   currentSession = null;
   showIdEntry();
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 // --- 参加者ID入力・確認(仕様7章) ---
@@ -161,6 +159,14 @@ function showIdConfirm() {
               session: relativeSession,
               persistSession: persistRelativeSession,
               onBack: () => showIdConfirm(),
+              onShowHistory: () => {
+                showRelativePitchHistoryScreen({
+                  screenEl,
+                  participantId,
+                  participantData: result.data,
+                  onBack: () => showIdConfirm(),
+                });
+              },
             });
           },
         });

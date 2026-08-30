@@ -14,12 +14,14 @@ import * as sessionStore from "./session-store.js";
 // session: このセッションの保存対象(練習と共通のセッション)。
 // persistSession: 保存を反映させるために呼ぶ関数。
 // onBack: 結果画面から戻る際に呼ぶ。
+// onShowHistory: 結果画面から履歴・CSV出力画面へ進む際に呼ぶ。
 export function showMainTestFlow({
   screenEl,
   layout = "circular",
   session,
   persistSession = () => {},
   onBack = () => {},
+  onShowHistory = () => {},
 }) {
   const sequence = generateTestSequence();
   sessionStore.setGeneratedQuestionOrder(session, sequence);
@@ -113,8 +115,12 @@ export function showMainTestFlow({
         <div class="score">${formatAccuracyLabel(correctCount, TOTAL_QUESTIONS)}</div>
         <p>正解数</p>
         <div class="score">${correctCount} / ${TOTAL_QUESTIONS}</div>
-        <div class="actions centered"><button id="back" class="primary">戻る</button></div>
+        <div class="actions centered">
+          <button id="history" class="secondary">履歴・CSVを見る</button>
+          <button id="back" class="primary">戻る</button>
+        </div>
       </div>`;
+    document.getElementById("history").addEventListener("click", onShowHistory);
     document.getElementById("back").addEventListener("click", onBack);
   }
 }
