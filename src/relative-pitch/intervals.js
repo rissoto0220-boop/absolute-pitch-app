@@ -65,6 +65,22 @@ export function buildQuestion(keyCode, semitone) {
   };
 }
 
+// カデンツWAVのファイル名(仕様8.1)。
+export function cadenceFilenameFor(keyCode) {
+  return `cadence_${keyCode}.wav`;
+}
+
+// 基準音WAVのファイル名。既存の絶対音感WAV(2秒、加工なし)とは別の、
+// 基準音専用の新規WAV(1秒+短いフェードアウト)を使う(仕様9.1、2026-08-30確定)。
+export function referenceFilenameFor(keyCode) {
+  return `reference_${KEY_BASE_NOTES[keyCode]}.wav`;
+}
+
+// 目的音WAVのファイル名。絶対音感テストで使用している既存の単音WAVをそのまま共用する(仕様9.1・9.4)。
+export function targetFilenameFor(note) {
+  return `${note}.wav`;
+}
+
 // 練習固定3問(仕様13.1)。この順番で1回だけ提示する。ランダム化しない。
 export const PRACTICE_QUESTIONS = [
   buildQuestion("C", 4),

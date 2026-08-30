@@ -8,6 +8,9 @@ import {
   targetNoteFor,
   buildQuestion,
   PRACTICE_QUESTIONS,
+  cadenceFilenameFor,
+  referenceFilenameFor,
+  targetFilenameFor,
 } from "../../src/relative-pitch/intervals.js";
 
 test("半音差は12種類(1〜11・13)。0と12は含まない", () => {
@@ -85,6 +88,15 @@ test("buildQuestionは半音差から1問分の情報一式を組み立てる", 
     referenceNote: "C4",
     targetNote: "Gis4",
   });
+});
+
+test("音源ファイル名の解決(仕様8.1・9.1)", () => {
+  assert.equal(cadenceFilenameFor("C"), "cadence_C.wav");
+  assert.equal(cadenceFilenameFor("Fis"), "cadence_Fis.wav");
+  assert.equal(referenceFilenameFor("C"), "reference_C4.wav");
+  assert.equal(referenceFilenameFor("Fis"), "reference_Fis4.wav");
+  assert.equal(targetFilenameFor("E4"), "E4.wav");
+  assert.equal(targetFilenameFor("Cis5"), "Cis5.wav");
 });
 
 test("練習の固定3問は仕様13.1の通り(Key C:ミ, Key C:ソ♯, Key Fis:ミ)", () => {

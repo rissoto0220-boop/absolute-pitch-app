@@ -78,3 +78,57 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
   .answer-grid { --wheel-size: min(88vw, 360px); --button-size: clamp(50px, 14vw, 62px); }
   .answer { font-size: .95rem; }
 }
+
+/* 相対音感の回答レイアウト比較用(仕様 relative-pitch-test-spec.md §11.2)。
+   絶対音感の.answer-grid/.answerとは名前を分け、混同・影響が起きないようにする。 */
+.answer-panel { position: relative; margin: 26px auto 8px; }
+
+.answer-panel--circular {
+  --wheel-size: min(70vw, 430px);
+  --button-size: clamp(56px, 11vw, 76px);
+  width: var(--wheel-size);
+  height: var(--wheel-size);
+  border-radius: 50%;
+  background: radial-gradient(circle, #f8fbff 0 42%, #eef4ff 43% 66%, transparent 67%);
+}
+.answer-panel--circular .answer-panel__button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--button-size);
+  height: var(--button-size);
+  border-radius: 50%;
+  transform:
+    translate(-50%, -50%)
+    rotate(calc(var(--i) * 30deg))
+    translateY(calc(var(--wheel-size) * -0.40))
+    rotate(calc(var(--i) * -30deg));
+}
+
+.answer-panel--grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  max-width: 520px;
+}
+.answer-panel--grid .answer-panel__button {
+  border-radius: 12px;
+  padding: 14px 4px;
+}
+
+.answer-panel__button {
+  border: 2px solid #b8c5d8;
+  background: white;
+  font-size: 1.05rem;
+  font-weight: 800;
+  min-height: 52px;
+  box-shadow: 0 5px 14px rgba(35,50,79,.12);
+}
+.answer-panel__button:hover:not(:disabled), .answer-panel__button:focus-visible:not(:disabled) { border-color: #2258c7; background: #eef4ff; }
+.answer-panel__button:disabled { cursor: default; opacity: .55; }
+.answer-panel__button.selected { border-color: #2258c7; background: #dbe8ff; opacity: 1; }
+
+@media (max-width: 650px) {
+  .answer-panel--circular { --wheel-size: min(88vw, 360px); --button-size: clamp(50px, 14vw, 62px); }
+  .answer-panel__button { font-size: .95rem; }
+}

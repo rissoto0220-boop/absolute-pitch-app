@@ -1,6 +1,12 @@
 import { normalizeParticipantId, isValidParticipantId } from "./src/shared/participant-id.js";
 import { createQuestionTimer } from "./src/shared/question-timer.js";
-import { playStimulus } from "./src/shared/audio-player.js";
+import {
+  resumeAudioContext,
+  loadAudioBuffer,
+  scheduleAudioBuffer,
+  audioContextTime,
+  COLD_START_LEAD_SECONDS,
+} from "./src/shared/audio-buffer-player.js";
 import { createAnswerLock } from "./src/shared/answer-lock.js";
 import { noteByNumber, PRACTICE_STIMULUS_NUMBERS, ANSWERS } from "./src/absolute-pitch/notes.js";
 import {
@@ -28,8 +34,10 @@ import {
 } from "./src/absolute-pitch/reports.js";
 import { toCsv, downloadTextFile } from "./src/shared/csv.js";
 import { formatDisplayDateTime } from "./src/shared/display-format.js";
+import { showLayoutComparisonScreen } from "./src/relative-pitch/layout-comparison-screen.js";
+import { showQuestionTimelineDemoScreen } from "./src/relative-pitch/question-timeline-demo-screen.js";
 
-const QUESTION_MS = 3500;
+const QUESTION_MS = 3000;
 const INTER_QUESTION_GAP_MS = 1000; // 問題間の間隔(仕様13.4)
 
 let screenEl = null;
@@ -95,6 +103,8 @@ function showIdConfirm() {
         <button id="edit" class="secondary">修正する</button>
         <button id="accept" class="primary">このIDで進む</button>
       </div>
+      <p class="note"><a href="#" id="dev-relative-pitch-preview">(開発中の確認用)相対音感の回答レイアウトを見る</a></p>
+      <p class="note"><a href="#" id="dev-relative-pitch-timeline">(開発中の確認用)相対音感の音声タイムラインを試す</a></p>
     </div>`;
   document.getElementById("edit").addEventListener("click", () => showIdEntry(participantId));
   document.getElementById("accept").addEventListener("click", () => {
@@ -104,6 +114,23 @@ function showIdConfirm() {
     participantData = result.data;
     currentSession = result.session;
     showPracticeIntro();
+  });
+  // 相対音感フェーズ2(回答レイアウト比較)の手動確認用リンク。
+  // セッション開始やCSV保存とはまだ接続していない、確認専用の入口(将来のテスト選択画面で置き換える予定)。
+  document.getElementById("dev-relative-pitch-preview").addEventListener("click", (e) => {
+    e.preventDefault();
+    showLayoutComparisonScreen({
+      screenEl,
+      onConfirm: (layout) => {
+        alert(`選んだレイアウト: ${layout === "circular" ? "円環状" : "グリッド"}\n(この確認画面では保存されません)`);
+      },
+      onBack: () => showIdConfirm(),
+    });
+  });
+  // 相対音感フェーズ3(音声タイムライン)の手動確認用リンク。同じくセッション開始・保存とは未接続。
+  document.getElementById("dev-relative-pitch-timeline").addEventListener("click", (e) => {
+    e.preventDefault();
+    showQuestionTimelineDemoScreen({ screenEl, onBack: () => showIdConfirm() });
   });
 }
 
@@ -125,7 +152,12 @@ function showPracticeIntro() {
       <p class="note">この練習は原則1回のみです。練習問題そのものの再実施はできません。</p>
       <div class="actions"><button id="practice-start" class="primary">練習を開始</button></div>
     </div>`;
-  document.getElementById("practice-start").addEventListener("click", runPractice);
+  document.getElementById("practice-start").addEventListener("click", () => {
+    // 参加者が最初に音声を伴う操作をするタイミングでAudioContextを有効化する
+    // (ブラウザの自動再生制限への対応。相対音感と同じ考え方)。
+    resumeAudioContext();
+    runPractice();
+  });
 }
 
 function runPractice() {
@@ -173,7 +205,8 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
   let selectedAnswer = null;
   let responseAt = "";
   let responseTimeMs = "";
-  let timer = null; // 再生開始後にセットされる(回答時刻の基準はここから測る、仕様13.1)
+  let timer = null; // 再生開始後にセットされる
+  let stimulusStartedAt = null; // AudioContext時刻(秒)。反応時間計測の起点(仕様13.1)。
 
   const buttons = [...document.querySelectorAll(".answer")];
   buttons.forEach((btn) => btn.addEventListener("click", () => handleAnswer(btn)));
@@ -182,50 +215,58 @@ function showQuestion({ mode, note, questionNumber }, onResult) {
     if (!answerLock.tryLock()) return;
     selectedAnswer = button.dataset.answer;
     responseAt = toLocalIso();
-    // 反応時間は、クリックした瞬間にタイマーの経過時間を読み取って確定する。
-    // 3.5秒後のonQuestionEnd発火時点の経過時間(常に約3500ms)を使ってはならない。
-    responseTimeMs = timer ? Math.round(timer.elapsedSince()) : 0;
+    // 反応時間は、AudioContextの正確な時計を基準に、音源の再生予定時刻からの差で算出する
+    // (仕様13.3)。onQuestionEnd発火時点の経過時間(常に約3500ms)を使ってはならない。
+    responseTimeMs = stimulusStartedAt == null ? 0 : Math.round((audioContextTime() - stimulusStartedAt) * 1000);
     buttons.forEach((b) => { b.disabled = true; });
     button.classList.add("selected");
     document.getElementById("status").textContent = "回答を受け付けました。次の問題までお待ちください。";
     // 回答してもタイマーは止めない。次の問題への進行はタイマーのonQuestionEndに任せる(仕様13.2)。
   }
 
-  playStimulus(`public/sounds/${note.filename}`)
-    .then(() => {
-      // 実際に再生が始まった時点を「進行中の問題」として保存する(仕様19.2・23.2)。
-      beginQuestion(currentSession, {
-        phase: mode,
-        questionNumber,
-        stimulusNumber: note.number,
-        stimulusNote: note.germanNote,
-        stimulusFilename: note.filename,
-        correctResponse: note.answer,
-      });
-      persistCurrentSession();
+  loadAudioBuffer(`public/sounds/${note.filename}`)
+    .then((buffer) => {
+      // コールドスタート対策として、少し先の時刻を狙って再生を予約する(相対音感と同じ対応。
+      // audio-buffer-player.js参照)。「進行中の問題として保存」「回答受付開始」「3.5秒タイマー
+      // 開始」は、この再生予定時刻に合わせて行う(仕様13.2「回答受付は再生開始と同時に始める」)。
+      const { startedAt } = scheduleAudioBuffer(buffer, audioContextTime() + COLD_START_LEAD_SECONDS);
+      stimulusStartedAt = startedAt;
 
-      // 回答受付は再生開始と同時に始める(仕様13.2)。それまでボタンは無効にしておく。
-      buttons.forEach((b) => { b.disabled = false; });
+      setTimeout(() => {
+        // 実際に再生が始まる時点を「進行中の問題」として保存する(仕様19.2・23.2)。
+        beginQuestion(currentSession, {
+          phase: mode,
+          questionNumber,
+          stimulusNumber: note.number,
+          stimulusNote: note.germanNote,
+          stimulusFilename: note.filename,
+          correctResponse: note.answer,
+        });
+        persistCurrentSession();
 
-      timer = createQuestionTimer({
-        durationMs: QUESTION_MS,
-        onQuestionEnd: () => {
-          const answered = answerLock.isLocked();
-          const outcome = !answered ? "timeout" : (selectedAnswer === note.answer ? "correct" : "incorrect");
-          // 3.5秒経過の瞬間に、回答済みかどうかによらず全ボタンを無効化する(消去はしない)。
-          // この直後の短い間隔(仕様13.4)を置いてから次の問題へ進めることで、遅れたクリックが
-          // 次の問題の回答として記録されるのを防ぐ。
-          buttons.forEach((b) => { b.disabled = true; });
-          setTimeout(() => {
-            onResult({
-              outcome,
-              responseNote: answered ? selectedAnswer : "",
-              responseAt: answered ? responseAt : "",
-              responseTimeMs: answered ? responseTimeMs : "",
-            });
-          }, INTER_QUESTION_GAP_MS);
-        },
-      });
+        // 回答受付は再生開始と同時に始める(仕様13.2)。それまでボタンは無効にしておく。
+        buttons.forEach((b) => { b.disabled = false; });
+
+        timer = createQuestionTimer({
+          durationMs: QUESTION_MS,
+          onQuestionEnd: () => {
+            const answered = answerLock.isLocked();
+            const outcome = !answered ? "timeout" : (selectedAnswer === note.answer ? "correct" : "incorrect");
+            // 3.5秒経過の瞬間に、回答済みかどうかによらず全ボタンを無効化する(消去はしない)。
+            // この直後の短い間隔(仕様13.4)を置いてから次の問題へ進めることで、遅れたクリックが
+            // 次の問題の回答として記録されるのを防ぐ。
+            buttons.forEach((b) => { b.disabled = true; });
+            setTimeout(() => {
+              onResult({
+                outcome,
+                responseNote: answered ? selectedAnswer : "",
+                responseAt: answered ? responseAt : "",
+                responseTimeMs: answered ? responseTimeMs : "",
+              });
+            }, INTER_QUESTION_GAP_MS);
+          },
+        });
+      }, COLD_START_LEAD_SECONDS * 1000);
     })
     .catch(() => {
       // 再生失敗時はこの問題を誤回答・タイムアウトとして記録せず、セッション自体をinterruptedとして確定する(仕様8.5)。
