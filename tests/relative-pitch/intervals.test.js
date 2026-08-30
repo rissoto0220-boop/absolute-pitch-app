@@ -7,6 +7,7 @@ import {
   syllableFor,
   targetNoteFor,
   buildQuestion,
+  isCorrectAnswer,
   PRACTICE_QUESTIONS,
   cadenceFilenameFor,
   referenceFilenameFor,
@@ -88,6 +89,13 @@ test("buildQuestionは半音差から1問分の情報一式を組み立てる", 
     referenceNote: "C4",
     targetNote: "Gis4",
   });
+});
+
+test("isCorrectAnswerは半音差(内部コード相当)を基準に判定する(仕様10.2)", () => {
+  const question = buildQuestion("C", 4); // 正解はミ(半音差4)
+  assert.equal(isCorrectAnswer(question, 4), true);
+  assert.equal(isCorrectAnswer(question, 8), false);
+  assert.equal(isCorrectAnswer(question, 1), false);
 });
 
 test("音源ファイル名の解決(仕様8.1・9.1)", () => {

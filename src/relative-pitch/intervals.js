@@ -81,6 +81,12 @@ export function targetFilenameFor(note) {
   return `${note}.wav`;
 }
 
+// 正解判定は半音差(内部コード)を基準に行い、参加者向け表示文字列(displayLabel)を
+// 正解判定の基準にはしない(仕様10.2)。
+export function isCorrectAnswer(question, responseSemitone) {
+  return question.intervalSemitones === responseSemitone;
+}
+
 // 練習固定3問(仕様13.1)。この順番で1回だけ提示する。ランダム化しない。
 export const PRACTICE_QUESTIONS = [
   buildQuestion("C", 4),
