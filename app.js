@@ -128,7 +128,8 @@ function showIdConfirm() {
     e.preventDefault();
     showQuestionTimelineDemoScreen({ screenEl, onBack: () => showIdConfirm() });
   });
-  // 相対音感フェーズ5: 簡易版/完全版の選択→(フェーズ6以前は)回答レイアウト選択→練習→本番。
+  // 相対音感フェーズ6: 簡易版/完全版の選択→回答レイアウト選択→練習→本番。
+  // 選んだtestVersionを最後まで引き回し、簡易版・完全版で問題セット・回答ボタンを切り替える(仕様6.2)。
   // セッションは練習・本番を通じて1つを使い回す(仕様17〜19章。絶対音感と同じ考え方)。
   document.getElementById("dev-relative-pitch-full").addEventListener("click", (e) => {
     e.preventDefault();
@@ -138,6 +139,7 @@ function showIdConfirm() {
       onSelect: (testVersion) => {
         showLayoutComparisonScreen({
           screenEl,
+          testVersion,
           onBack: () => showIdConfirm(),
           onConfirm: (layout) => {
             // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
@@ -151,11 +153,10 @@ function showIdConfirm() {
             const relativeSession = result.session;
             const persistRelativeSession = () => persistRelativePitchParticipantData(participantId, result.data, localStorage);
 
-            // フェーズ6(練習・本番画面の一般化)完了まで、練習・本番の中身は簡易版のまま
-            // (testVersion="full"を選んでも、まだ完全版の問題セットには切り替わらない)。
             showPracticeFlow({
               screenEl,
               layout,
+              testVersion,
               hasCompletedBefore,
               session: relativeSession,
               persistSession: persistRelativeSession,
@@ -163,6 +164,7 @@ function showIdConfirm() {
                 showMainTestFlow({
                   screenEl,
                   layout,
+                  testVersion,
                   session: relativeSession,
                   persistSession: persistRelativeSession,
                   onBack: () => showIdConfirm(),

@@ -54,6 +54,11 @@ export const SYLLABLES_BY_SEMITONE = {
 // 自動的に不正解として扱われる(正解判定ロジックの変更は不要)。
 export const ANSWER_BUTTON_SEMITONES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
+// 完全版の回答ボタンとして表示する半音差(仕様6.2「回答ボタン」、2026-09-18確定)。
+// 「ド」(0)にFULL_INTERVAL_SEMITONES(1〜11)を加えた12種類。完全版はオクターブ重複音
+// (半音差12・13)を出題しないため、対応する重複ボタンも不要。
+export const FULL_ANSWER_BUTTON_SEMITONES = [0, ...FULL_INTERVAL_SEMITONES];
+
 // 目的音の計算に使う、絶対音感の音源ライブラリと同じ命名(♯系のみ、public/sounds/参照)の
 // 半音階。目的音WAVは絶対音感の既存単音WAVを共用するため、常にこの命名で解決する必要がある。
 const CHROMATIC_SCALE = ["C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "Ais", "H"];
@@ -115,18 +120,10 @@ export function isCorrectAnswer(question, responseSemitone) {
   return question.intervalSemitones === responseSemitone;
 }
 
-// 練習固定3問(仕様13.1)。この順番で1回だけ提示する。ランダム化しない。簡易版専用。
+// 練習固定3問(仕様13.1)。この順番で1回だけ提示する。ランダム化しない。
+// 完全版もこの3問をそのまま流用する(仕様6.2「練習問題」、2026-09-18更新)。
 export const PRACTICE_QUESTIONS = [
   buildQuestion("C", 4),
   buildQuestion("C", 8),
   buildQuestion("Fis", 4),
-];
-
-// 完全版の練習固定4問(仕様6.2「練習問題」、2026-09-18確定)。4キーを1問ずつ体験する。
-// この順番で1回だけ提示する。ランダム化しない。
-export const FULL_PRACTICE_QUESTIONS = [
-  buildQuestion("C", 4),
-  buildQuestion("Es", 7),
-  buildQuestion("Fis", 2),
-  buildQuestion("A", 9),
 ];

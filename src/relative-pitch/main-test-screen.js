@@ -3,14 +3,15 @@ import { renderAnswerPanel } from "../shared/answer-panel.js";
 import { runQuestionTimeline } from "./question-timeline.js";
 import { resumeAudioContext } from "../shared/audio-buffer-player.js";
 import { toLocalIso } from "../shared/iso-time.js";
-import { ANSWER_LABELS } from "./layout-comparison-screen.js";
-import { ANSWER_BUTTON_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
-import { generateTestSequence, TOTAL_QUESTIONS } from "./question-generator.js";
+import { ANSWER_LABELS, FULL_ANSWER_LABELS } from "./layout-comparison-screen.js";
+import { ANSWER_BUTTON_SEMITONES, FULL_ANSWER_BUTTON_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
+import { generateTestSequence, TOTAL_QUESTIONS, generateFullTestSequence, FULL_TOTAL_QUESTIONS } from "./question-generator.js";
 import { formatAccuracyLabel } from "./scoring.js";
 import * as sessionStore from "./session-store.js";
 
 // screenEl: 描画先のDOM要素。
 // layout: フェーズ2で選んだ回答レイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
+// testVersion: "simplified"(既定)または"full"。出題順生成・回答ボタンの構成を切り替える(仕様6.2)。
 // session: このセッションの保存対象(練習と共通のセッション)。
 // persistSession: 保存を反映させるために呼ぶ関数。
 // onBack: 結果画面から戻る際に呼ぶ。
@@ -18,12 +19,18 @@ import * as sessionStore from "./session-store.js";
 export function showMainTestFlow({
   screenEl,
   layout = "circular",
+  testVersion = "simplified",
   session,
   persistSession = () => {},
   onBack = () => {},
   onShowHistory = () => {},
 }) {
-  const sequence = generateTestSequence();
+  const isFull = testVersion === "full";
+  const totalQuestions = isFull ? FULL_TOTAL_QUESTIONS : TOTAL_QUESTIONS;
+  const answerLabels = isFull ? FULL_ANSWER_LABELS : ANSWER_LABELS;
+  const answerButtonSemitones = isFull ? FULL_ANSWER_BUTTON_SEMITONES : ANSWER_BUTTON_SEMITONES;
+
+  const sequence = isFull ? generateFullTestSequence() : generateTestSequence();
   sessionStore.setGeneratedQuestionOrder(session, sequence);
   persistSession();
 
@@ -79,11 +86,11 @@ export function showMainTestFlow({
         document.getElementById("test-status").textContent = "聞こえた階名を選んでください。";
         renderAnswerPanel({
           container: document.getElementById("answer-panel-container"),
-          labels: ANSWER_LABELS,
+          labels: answerLabels,
           layout,
           onSelect: (label, labelIndex) => {
             // 正解判定・保存には表示ラベルではなく半音差(内部コード相当)を使う(仕様10.2)。
-            timeline.submitAnswer(ANSWER_BUTTON_SEMITONES[labelIndex]);
+            timeline.submitAnswer(answerButtonSemitones[labelIndex]);
           },
         });
       },
@@ -112,9 +119,9 @@ export function showMainTestFlow({
       <div class="panel center">
         <h2>テストが終了しました</h2>
         <p>正答率</p>
-        <div class="score">${formatAccuracyLabel(correctCount, TOTAL_QUESTIONS)}</div>
+        <div class="score">${formatAccuracyLabel(correctCount, totalQuestions)}</div>
         <p>正解数</p>
-        <div class="score">${correctCount} / ${TOTAL_QUESTIONS}</div>
+        <div class="score">${correctCount} / ${totalQuestions}</div>
         <div class="actions centered">
           <button id="history" class="secondary">履歴・CSVを見る</button>
           <button id="back" class="primary">戻る</button>

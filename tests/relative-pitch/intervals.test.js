@@ -6,13 +6,13 @@ import {
   FULL_KEYS,
   SYLLABLES_BY_SEMITONE,
   ANSWER_BUTTON_SEMITONES,
+  FULL_ANSWER_BUTTON_SEMITONES,
   KEY_BASE_NOTES,
   syllableFor,
   targetNoteFor,
   buildQuestion,
   isCorrectAnswer,
   PRACTICE_QUESTIONS,
-  FULL_PRACTICE_QUESTIONS,
   cadenceFilenameFor,
   referenceFilenameFor,
   targetFilenameFor,
@@ -64,6 +64,13 @@ test("半音差12(「高いド」)は出題対象ではないが、回答ボタ�
   assert.equal(syllable.displayLabel, "ド↑");
   assert.equal(syllable.enharmonicLabel, null);
   assert.equal(INTERVAL_SEMITONES.includes(12), false, "出題対象のINTERVAL_SEMITONESには含まれない");
+});
+
+test("FULL_ANSWER_BUTTON_SEMITONES: 「ド」(0)を先頭に加えた完全版の回答ボタン12種類(仕様6.2、2026-09-18追加)", () => {
+  assert.deepEqual(FULL_ANSWER_BUTTON_SEMITONES, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  assert.equal(FULL_ANSWER_BUTTON_SEMITONES.length, 12);
+  assert.equal(FULL_ANSWER_BUTTON_SEMITONES.includes(12), false, "オクターブ重複ボタンは含まない");
+  assert.equal(FULL_ANSWER_BUTTON_SEMITONES.includes(13), false, "オクターブ重複ボタンは含まない");
 });
 
 test("「#」を含む階名には♭側の異名同音表記が付き、それ以外はnull(2026-09-18更新)", () => {
@@ -187,19 +194,6 @@ test("Key Aの基準音はA4、目的音の計算は仕様6.2の通り(2026-09-1
   FULL_INTERVAL_SEMITONES.forEach((semitone) => {
     assert.equal(targetNoteFor("A", semitone), expected[semitone]);
   });
-});
-
-test("完全版の練習固定4問は仕様6.2の通り(4キーを1問ずつ)", () => {
-  assert.equal(FULL_PRACTICE_QUESTIONS.length, 4);
-  assert.deepEqual(
-    FULL_PRACTICE_QUESTIONS.map((q) => [q.keyCode, q.intervalSemitones, q.syllableCode, q.displayLabel, q.targetNote]),
-    [
-      ["C", 4, "MiM", "ミ", "E4"],
-      ["Es", 7, "SoM", "ソ", "Ais4"],
-      ["Fis", 2, "ReM", "レ", "Gis4"],
-      ["A", 9, "LaM", "ラ", "Fis5"],
-    ],
-  );
 });
 
 test("cadenceFilenameFor・referenceFilenameForはKey Es・Aでも正しいファイル名を返す(2026-09-18追加)", () => {

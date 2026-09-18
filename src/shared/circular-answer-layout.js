@@ -67,7 +67,24 @@ export function spiralGuidePathPoints(maxSemitone, { baseRadius, step }, stepDeg
 // 半音差12・13は、対応する音名(ド・ド#)と同じ角度・半径outerRadiusに配置。
 // 半音差11(シ)は、ラ#(10)・高いド(12)・高いド#(13)の3点を通る円周上、
 // ラ#と高いドの中間角の位置に配置し、ラ#→シ→高いド→高いド#を1本の弧でつなぐ。
+//
+// semitonesに半音差12・13(オクターブ重複音)が両方とも含まれない場合(完全版など)は、
+// 橋渡し処理は行わず、全ボタンを角度=半音差*30度・半径innerRadiusの単一リングへ配置する
+// (circular・spiralと共通の、単純な円環の考え方をそのまま使う。2026-09-18確定)。
 export function computeDualRingLayout(semitones, { innerRadius, outerRadius }) {
+  if (!(semitones.includes(12) && semitones.includes(13))) {
+    const positions = {};
+    semitones.forEach((semitone) => {
+      positions[semitone] = toCartesian(semitone * 30, innerRadius);
+    });
+    return {
+      positions,
+      innerRingPoints: arcPathPoints(0, 360, innerRadius),
+      bridgeArcPoints: [],
+      bridge: null,
+    };
+  }
+
   const pLaSharp = toCartesian(300, innerRadius); // 半音差10: 角度10*30=300度
   const pHighDo = toCartesian(0, outerRadius); // 半音差12: 対応する音名(ド)と同じ角度0度
   const pHighDoSharp = toCartesian(30, outerRadius); // 半音差13: 対応する音名(ド#)と同じ角度30度

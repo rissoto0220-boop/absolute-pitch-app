@@ -1,6 +1,6 @@
 // 相対音感テスト簡易版・本番12問の出題順生成(仕様書 relative-pitch-test-spec.md §12)。
 // 完全版・本番44問の出題順生成(仕様書 relative-pitch-test-spec.md §6.2)。
-// 練習(固定問題、intervals.jsのPRACTICE_QUESTIONS/FULL_PRACTICE_QUESTIONS)では使わない、
+// 練習(固定問題、intervals.jsのPRACTICE_QUESTIONS。簡易版・完全版で共通)では使わない、
 // 本番固有のロジック。簡易版用のロジックはそのまま残し、完全版用は新しい関数として追加する
 // (簡易版の出題生成・保存済みテストに影響を与えないため)。
 import { buildQuestion, FULL_KEYS, FULL_INTERVAL_SEMITONES } from "./intervals.js";

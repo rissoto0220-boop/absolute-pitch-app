@@ -3,24 +3,37 @@ import { renderAnswerPanel } from "../shared/answer-panel.js";
 import { runQuestionTimeline } from "./question-timeline.js";
 import { resumeAudioContext } from "../shared/audio-buffer-player.js";
 import { toLocalIso } from "../shared/iso-time.js";
-import { ANSWER_LABELS } from "./layout-comparison-screen.js";
-import { PRACTICE_QUESTIONS, ANSWER_BUTTON_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
+import { ANSWER_LABELS, FULL_ANSWER_LABELS } from "./layout-comparison-screen.js";
+import {
+  PRACTICE_QUESTIONS,
+  ANSWER_BUTTON_SEMITONES,
+  FULL_ANSWER_BUTTON_SEMITONES,
+  isCorrectAnswer,
+  cadenceFilenameFor,
+} from "./intervals.js";
 import * as sessionStore from "./session-store.js";
 
 // screenEl: 描画先のDOM要素。
 // layout: フェーズ2で選んだ回答レイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
-// hasCompletedBefore: 完了済みの相対音感簡易版履歴があるか(仕様13.4)。
+// testVersion: "simplified"(既定)または"full"。回答ボタンの構成を切り替える(仕様6.2)。
+//   練習問題自体は簡易版・完全版で共通(PRACTICE_QUESTIONS、2026-09-18更新)。
+// hasCompletedBefore: 完了済みの相対音感履歴があるか(同じtestVersionでの判定、仕様13.4)。
 // session: このセッションの保存対象(session-store.jsのstartSessionが返すもの)。
 // persistSession: 保存を反映させるために呼ぶ関数(呼び出し元がlocalStorageへの書き込みを担う)。
-// onFinished: 練習が終わった時点(3問終えた、またはスキップした)で呼ぶ。
+// onFinished: 練習が終わった時点(全問終えた、またはスキップした)で呼ぶ。
 export function showPracticeFlow({
   screenEl,
   layout = "circular",
+  testVersion = "simplified",
   hasCompletedBefore = false,
   session,
   persistSession = () => {},
   onFinished = () => {},
 }) {
+  const practiceQuestions = PRACTICE_QUESTIONS;
+  const answerLabels = testVersion === "full" ? FULL_ANSWER_LABELS : ANSWER_LABELS;
+  const answerButtonSemitones = testVersion === "full" ? FULL_ANSWER_BUTTON_SEMITONES : ANSWER_BUTTON_SEMITONES;
+
   if (hasCompletedBefore) {
     showSkipChoice();
   } else {
@@ -49,7 +62,7 @@ export function showPracticeFlow({
     screenEl.innerHTML = `
       <div class="panel">
         <h2>練習問題</h2>
-        <p>これから3問の練習を行います。</p>
+        <p>これから${practiceQuestions.length}問の練習を行います。</p>
         <ul class="instructions">
           <li>カデンツ・基準音・目的音の順に自動再生されます。</li>
           <li>目的音が鳴り始めたら、聞こえた階名を選んでください。</li>
@@ -72,13 +85,13 @@ export function showPracticeFlow({
   }
 
   function runQuestion(index) {
-    if (index >= PRACTICE_QUESTIONS.length) {
+    if (index >= practiceQuestions.length) {
       sessionStore.setPracticeStatus(session, "completed");
       persistSession();
       onFinished("completed");
       return;
     }
-    const question = PRACTICE_QUESTIONS[index];
+    const question = practiceQuestions[index];
     const questionNumber = index + 1;
 
     screenEl.innerHTML = `
@@ -114,11 +127,11 @@ export function showPracticeFlow({
         document.getElementById("practice-status").textContent = "聞こえた階名を選んでください。";
         renderAnswerPanel({
           container: document.getElementById("answer-panel-container"),
-          labels: ANSWER_LABELS,
+          labels: answerLabels,
           layout,
           onSelect: (label, labelIndex) => {
             // 正解判定・保存には表示ラベルではなく半音差(内部コード相当)を使う(仕様10.2)。
-            timeline.submitAnswer(ANSWER_BUTTON_SEMITONES[labelIndex]);
+            timeline.submitAnswer(answerButtonSemitones[labelIndex]);
           },
         });
       },
@@ -139,8 +152,8 @@ export function showPracticeFlow({
   }
 
   function showFeedback(questionNumber, outcome) {
-    const question = PRACTICE_QUESTIONS[questionNumber - 1];
-    const isLast = questionNumber >= PRACTICE_QUESTIONS.length;
+    const question = practiceQuestions[questionNumber - 1];
+    const isLast = questionNumber >= practiceQuestions.length;
 
     screenEl.innerHTML = `
       <div class="panel center">

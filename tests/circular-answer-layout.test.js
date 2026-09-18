@@ -71,7 +71,7 @@ test("computeDualRingLayout: シ(11)・ラ#(10)・高いド(12)・高いド#(13)
 });
 
 test("computeDualRingLayout: シは、ラ#と高いドの間(内接する側)に位置する", () => {
-  const { positions } = computeDualRingLayout([10, 11, 12], { innerRadius: 0.42, outerRadius: 0.7 });
+  const { positions } = computeDualRingLayout([10, 11, 12, 13], { innerRadius: 0.42, outerRadius: 0.7 });
   const distShiToLaSharp = distance(positions[11], positions[10]);
   const distShiToHighDo = distance(positions[11], positions[12]);
   const distLaSharpToHighDo = distance(positions[10], positions[12]);
@@ -81,8 +81,8 @@ test("computeDualRingLayout: シは、ラ#と高いドの間(内接する側)に
   assert.ok(distShiToHighDo < distLaSharpToHighDo);
 });
 
-test("computeDualRingLayout: 内側リングの弧はド(0度)からラ#(300度)までの区間のみ", () => {
-  const { innerRingPoints } = computeDualRingLayout([0], { innerRadius: 0.42, outerRadius: 0.7 });
+test("computeDualRingLayout: 内側リングの弧はド(0度)からラ#(300度)までの区間のみ(12・13が両方ある場合)", () => {
+  const { innerRingPoints } = computeDualRingLayout([0, 12, 13], { innerRadius: 0.42, outerRadius: 0.7 });
   const first = innerRingPoints[0];
   const last = innerRingPoints[innerRingPoints.length - 1];
   // 0度(真上)の点: x=50, y=50-radius
@@ -94,6 +94,36 @@ test("computeDualRingLayout: 内側リングの弧はド(0度)からラ#(300度)
   const expectedLastY = 50 - r * Math.cos((300 * Math.PI) / 180);
   assert.ok(Math.abs(last.x - expectedLastX) < 1e-6);
   assert.ok(Math.abs(last.y - expectedLastY) < 1e-6);
+});
+
+test("computeDualRingLayout: 半音差12・13が無い場合(完全版など)は、橋渡しをせず単純な単一リングになる", () => {
+  const semitones = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]; // 完全版の回答ボタン相当(12個)
+  const { positions, bridgeArcPoints, bridge } = computeDualRingLayout(semitones, { innerRadius: 0.42, outerRadius: 0.7 });
+  const center = { x: 50, y: 50 };
+  semitones.forEach((semitone) => {
+    assert.ok(Math.abs(distance(center, positions[semitone]) - 0.42 * 50) < 1e-9, `半音差${semitone}はinnerRadius上にあるはず`);
+    assert.ok(Math.abs(compassAngleDeg(center, positions[semitone]) - (semitone * 30)) < 1e-6);
+  });
+  assert.deepEqual(bridgeArcPoints, []);
+  assert.equal(bridge, null);
+});
+
+test("computeDualRingLayout: 半音差12・13が無い場合、内側リングの弧は0度〜360度の全周になる", () => {
+  const { innerRingPoints } = computeDualRingLayout([0, 1, 2], { innerRadius: 0.42, outerRadius: 0.7 });
+  const first = innerRingPoints[0];
+  const last = innerRingPoints[innerRingPoints.length - 1];
+  assert.ok(Math.abs(first.x - 50) < 1e-6);
+  assert.ok(Math.abs(first.y - (50 - 0.42 * 50)) < 1e-6);
+  // 360度は0度と同じ位置(全周が閉じている)
+  assert.ok(Math.abs(last.x - first.x) < 1e-6);
+  assert.ok(Math.abs(last.y - first.y) < 1e-6);
+});
+
+test("computeDualRingLayout: 半音差12だけ・13だけしか無い場合も橋渡しはしない(両方揃って初めて橋渡しする)", () => {
+  const onlyTwelve = computeDualRingLayout([0, 12], { innerRadius: 0.42, outerRadius: 0.7 });
+  assert.equal(onlyTwelve.bridge, null);
+  const onlyThirteen = computeDualRingLayout([0, 13], { innerRadius: 0.42, outerRadius: 0.7 });
+  assert.equal(onlyThirteen.bridge, null);
 });
 
 test("safeDualRingInnerRadius: 最大ボタンサイズ・最大コンテナサイズから、重ならない内側半径を導出する", () => {
@@ -108,7 +138,7 @@ test("safeDualRingInnerRadius: 実際にこの値で内側・外側のペア(同
   const maxButtonSizePx = 76;
   const maxWheelSizePx = 430;
   const innerRadius = safeDualRingInnerRadius(outerRadius, { maxButtonSizePx, maxWheelSizePx });
-  const { positions } = computeDualRingLayout([0, 12], { innerRadius, outerRadius });
+  const { positions } = computeDualRingLayout([0, 12, 13], { innerRadius, outerRadius });
   const gapFraction = outerRadius - innerRadius; // ド(0)と高いド(12)は同じ角度なので、半径の差がそのまま間隔になる
   const gapPx = gapFraction * (maxWheelSizePx / 2);
   assert.ok(gapPx >= maxButtonSizePx, `間隔${gapPx}pxはボタンサイズ${maxButtonSizePx}px以上のはず`);
