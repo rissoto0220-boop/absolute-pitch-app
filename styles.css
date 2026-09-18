@@ -87,15 +87,22 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
 }
 
 /* 相対音感の回答レイアウト比較用(仕様 relative-pitch-test-spec.md §11.2)。
-   絶対音感の.answer-grid/.answerとは名前を分け、混同・影響が起きないようにする。 */
-.answer-panel { position: relative; margin: 26px auto 8px; }
+   絶対音感の.answer-grid/.answerとは名前を分け、混同・影響が起きないようにする。
+   2026-09-18: 比較候補をcircular・spiral・dual_ringの3つに入れ替え(gridは削除)。
+   案内文(.status)と円環外側のボタンが重ならないよう、上余白を広げてある。 */
+.answer-panel { position: relative; margin: 90px auto 8px; }
 
-.answer-panel--circular {
-  /* .answer-gridと同じ理由(上記コメント参照)でvwのままにする。 */
+.answer-panel--circular,
+.answer-panel--spiral,
+.answer-panel--dual_ring {
+  /* .answer-gridと同じ理由(上記コメント参照)でvwのままにする。
+     3候補で同じ余白・ボタンサイズにし、配置(位置計算)だけの違いで比較できるようにする。 */
   --wheel-size: min(70vw, 430px);
   --button-size: clamp(56px, 11vw, 76px);
   width: var(--wheel-size);
   height: var(--wheel-size);
+}
+.answer-panel--circular {
   border-radius: 50%;
   background: radial-gradient(circle, #f8fbff 0 42%, #eef4ff 43% 66%, transparent 67%);
 }
@@ -112,31 +119,74 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
     translateY(calc(var(--wheel-size) * -0.40))
     rotate(calc(var(--i) * -30deg));
 }
-
-.answer-panel--grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
-  max-width: 520px;
+/* 高いド・高いド#(半音差12・13)は、通常のリングより外側・放射状に配置する(2026-09-18更新)。
+   --iはこの2つについてそれぞれ12・13になるが、rotate(360deg)・rotate(390deg)は
+   360度周期性によりrotate(0deg)・rotate(30deg)と同じ位置になるため、対応する音名
+   (ド・ド#)と自動的に同じ角度になる。半径(translateY)だけ通常より大きくし、
+   ガイドリング等の装飾は付けない(dual_ringとの違い)。 */
+.answer-panel--circular .answer-panel__button--extra {
+  transform:
+    translate(-50%, -50%)
+    rotate(calc(var(--i) * 30deg))
+    translateY(calc(var(--wheel-size) * -0.62))
+    rotate(calc(var(--i) * -30deg));
 }
-.answer-panel--grid .answer-panel__button {
-  border-radius: 12px;
-  padding: 14px 4px;
+
+/* spiral(渦巻配置)・dual_ring(二重円環)は、半径が半音差ごとに連続的に変わったり、
+   単純な円に収まらなかったりするため、位置をJS(circular-answer-layout.js)で計算し、
+   ボタンのstyle属性へ直接left/top(%)を指定する。CSS側は絶対配置の土台だけを用意する
+   (--wheel-size・--button-sizeはcircularと共通のため、上のルールで指定済み)。 */
+.answer-panel--spiral .answer-panel__button,
+.answer-panel--dual_ring .answer-panel__button {
+  position: absolute;
+  width: var(--button-size);
+  height: var(--button-size);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.answer-panel__guide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.answer-panel__guide path {
+  fill: none;
+  stroke: #dbe6f5;
+  stroke-width: 10;
+  stroke-linecap: round;
 }
 
 .answer-panel__button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   border: 2px solid #b8c5d8;
   background: white;
-  font-size: 1.05rem;
+  /* 文字サイズをボタンサイズに連動させる(2026-09-18: スマホで文字盤が2行に折り返される
+     問題への対応)。--button-sizeはcircular/spiral/dual_ringで共有・レスポンシブなので、
+     ボタンが小さくなれば文字サイズも自動的に追従する。 */
+  font-size: calc(var(--button-size) * 0.22);
   font-weight: 800;
+  line-height: 1.1;
   min-height: 52px;
   box-shadow: 0 5px 14px rgba(35,50,79,.12);
 }
+.answer-panel__label-main,
+.answer-panel__label-alt { white-space: nowrap; }
+.answer-panel__label-alt { font-size: .68em; font-weight: 700; color: #536179; }
 .answer-panel__button:hover:not(:disabled), .answer-panel__button:focus-visible:not(:disabled) { border-color: #2258c7; background: #eef4ff; }
 .answer-panel__button:disabled { cursor: default; opacity: .55; }
 .answer-panel__button.selected { border-color: #2258c7; background: #dbe8ff; opacity: 1; }
 
 @media (max-width: 650px) {
-  .answer-panel--circular { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
-  .answer-panel__button { font-size: .95rem; }
+  .answer-panel--circular,
+  .answer-panel--spiral,
+  .answer-panel--dual_ring { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
+  /* .answer-panel__buttonの文字サイズはcalc(var(--button-size) * 0.22)で連動するため、
+     ここでの上書きは不要(--button-size自体がこのブレークポイントで小さくなる)。 */
 }

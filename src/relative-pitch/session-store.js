@@ -48,7 +48,7 @@ function reconcileDanglingSessions(data, now) {
   });
 }
 
-// options.answerLayout: フェーズ2で選んだレイアウト("circular"または"grid")。
+// options.answerLayout: フェーズ2で選んだレイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
 export function startSession(participantId, {
   storage,
   answerLayout = "",

@@ -4,11 +4,11 @@ import { runQuestionTimeline } from "./question-timeline.js";
 import { resumeAudioContext } from "../shared/audio-buffer-player.js";
 import { toLocalIso } from "../shared/iso-time.js";
 import { ANSWER_LABELS } from "./layout-comparison-screen.js";
-import { PRACTICE_QUESTIONS, INTERVAL_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
+import { PRACTICE_QUESTIONS, ANSWER_BUTTON_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
 import * as sessionStore from "./session-store.js";
 
 // screenEl: 描画先のDOM要素。
-// layout: フェーズ2で選んだ回答レイアウト("circular"または"grid")。
+// layout: フェーズ2で選んだ回答レイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
 // hasCompletedBefore: 完了済みの相対音感簡易版履歴があるか(仕様13.4)。
 // session: このセッションの保存対象(session-store.jsのstartSessionが返すもの)。
 // persistSession: 保存を反映させるために呼ぶ関数(呼び出し元がlocalStorageへの書き込みを担う)。
@@ -118,7 +118,7 @@ export function showPracticeFlow({
           layout,
           onSelect: (label, labelIndex) => {
             // 正解判定・保存には表示ラベルではなく半音差(内部コード相当)を使う(仕様10.2)。
-            timeline.submitAnswer(INTERVAL_SEMITONES[labelIndex]);
+            timeline.submitAnswer(ANSWER_BUTTON_SEMITONES[labelIndex]);
           },
         });
       },

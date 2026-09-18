@@ -13,21 +13,35 @@ export const INTERVAL_SEMITONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13];
 // 半音差ごとの階名定義(仕様10.2)。
 // code: 正解判定に使う内部コード(参加者へは表示しない)。
 // displayLabel: 参加者向けのカタカナ表示。
+// enharmonicLabel: 「#」を含む表記に併記する♭側の異名同音表記(2026-09-17追加)。無い場合はnull。
 // intervalLabel/scaleLabel: 属性ペア分類用(仕様12.1)。
 export const SYLLABLES_BY_SEMITONE = {
-  1: { code: "DiM", displayLabel: "ド♯", intervalLabel: "short", scaleLabel: "out" },
-  2: { code: "ReM", displayLabel: "レ", intervalLabel: "short", scaleLabel: "in" },
-  3: { code: "RiM", displayLabel: "レ♯", intervalLabel: "short", scaleLabel: "out" },
-  4: { code: "MiM", displayLabel: "ミ", intervalLabel: "short", scaleLabel: "in" },
-  5: { code: "FaM", displayLabel: "ファ", intervalLabel: "mid", scaleLabel: "in" },
-  6: { code: "FiM", displayLabel: "ファ♯", intervalLabel: "mid", scaleLabel: "out" },
-  7: { code: "SoM", displayLabel: "ソ", intervalLabel: "mid", scaleLabel: "in" },
-  8: { code: "SiM", displayLabel: "ソ♯", intervalLabel: "mid", scaleLabel: "out" },
-  9: { code: "LaM", displayLabel: "ラ", intervalLabel: "long", scaleLabel: "in" },
-  10: { code: "LiM", displayLabel: "ラ♯", intervalLabel: "long", scaleLabel: "out" },
-  11: { code: "TiM", displayLabel: "シ", intervalLabel: "long", scaleLabel: "in" },
-  13: { code: "diH", displayLabel: "ド♯↑", intervalLabel: "long", scaleLabel: "out" },
+  // 半音差0(基準音そのもの、「ド」)は出題対象ではないが、回答の選択肢としては表示する
+  // (2026-09-17追加)。属性ペア分類の対象外のため、intervalLabel/scaleLabelはnull。
+  0: { code: "DoM", displayLabel: "ド", enharmonicLabel: null, intervalLabel: null, scaleLabel: null },
+  1: { code: "DiM", displayLabel: "ド♯", enharmonicLabel: "レ♭", intervalLabel: "short", scaleLabel: "out" },
+  2: { code: "ReM", displayLabel: "レ", enharmonicLabel: null, intervalLabel: "short", scaleLabel: "in" },
+  3: { code: "RiM", displayLabel: "レ♯", enharmonicLabel: "ミ♭", intervalLabel: "short", scaleLabel: "out" },
+  4: { code: "MiM", displayLabel: "ミ", enharmonicLabel: null, intervalLabel: "short", scaleLabel: "in" },
+  5: { code: "FaM", displayLabel: "ファ", enharmonicLabel: null, intervalLabel: "mid", scaleLabel: "in" },
+  6: { code: "FiM", displayLabel: "ファ♯", enharmonicLabel: "ソ♭", intervalLabel: "mid", scaleLabel: "out" },
+  7: { code: "SoM", displayLabel: "ソ", enharmonicLabel: null, intervalLabel: "mid", scaleLabel: "in" },
+  8: { code: "SiM", displayLabel: "ソ♯", enharmonicLabel: "ラ♭", intervalLabel: "mid", scaleLabel: "out" },
+  9: { code: "LaM", displayLabel: "ラ", enharmonicLabel: null, intervalLabel: "long", scaleLabel: "in" },
+  10: { code: "LiM", displayLabel: "ラ♯", enharmonicLabel: "シ♭", intervalLabel: "long", scaleLabel: "out" },
+  11: { code: "TiM", displayLabel: "シ", enharmonicLabel: null, intervalLabel: "long", scaleLabel: "in" },
+  // 半音差12(1オクターブ上の「ド」)も、半音差0と同じく出題対象ではないが、
+  // 回答の選択肢としては表示する(2026-09-18追加)。
+  12: { code: "doH", displayLabel: "ド↑", enharmonicLabel: null, intervalLabel: null, scaleLabel: null },
+  13: { code: "diH", displayLabel: "ド♯↑", enharmonicLabel: "レ♭↑", intervalLabel: "long", scaleLabel: "out" },
 };
+
+// 回答ボタンとして表示する半音差(2026-09-17追加、2026-09-18に半音差12を追加)。
+// 半音差0〜13の連番14種類。「出題される半音差」(INTERVAL_SEMITONES)と「回答ボタンとして
+// 表示する半音差」を分けることで、出題ロジック(question-generator.js等)には一切影響しない。
+// 半音差0・12はisCorrectAnswer()のどの問題の正解にも一致しないため、これらを押すと
+// 自動的に不正解として扱われる(正解判定ロジックの変更は不要)。
+export const ANSWER_BUTTON_SEMITONES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 // キーごとの目的音対応表(仕様10.3・10.4)。
 const TARGET_NOTES_BY_KEY = {

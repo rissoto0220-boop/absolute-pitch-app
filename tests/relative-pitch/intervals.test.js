@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   INTERVAL_SEMITONES,
   SYLLABLES_BY_SEMITONE,
+  ANSWER_BUTTON_SEMITONES,
   KEY_BASE_NOTES,
   syllableFor,
   targetNoteFor,
@@ -37,6 +38,38 @@ test("半音差と参加者向け表示ラベルの対応(仕様10.2)", () => {
   };
   INTERVAL_SEMITONES.forEach((semitone) => {
     assert.equal(syllableFor(semitone).displayLabel, expected[semitone]);
+  });
+});
+
+test("半音差0(「ド」)は出題対象ではないが、回答ボタン用の階名定義を持つ(2026-09-17追加)", () => {
+  const syllable = syllableFor(0);
+  assert.equal(syllable.code, "DoM");
+  assert.equal(syllable.displayLabel, "ド");
+  assert.equal(syllable.enharmonicLabel, null);
+  assert.equal(INTERVAL_SEMITONES.includes(0), false, "出題対象のINTERVAL_SEMITONESには含まれない");
+});
+
+test("ANSWER_BUTTON_SEMITONES: 半音差0〜13の連番14種類で、INTERVAL_SEMITONESは変更しない(2026-09-18更新)", () => {
+  assert.deepEqual(ANSWER_BUTTON_SEMITONES, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+  assert.equal(ANSWER_BUTTON_SEMITONES.length, 14);
+  assert.deepEqual(INTERVAL_SEMITONES, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13], "既存の出題用リストは不変(半音差12は引き続き出題対象外)");
+});
+
+test("半音差12(「高いド」)は出題対象ではないが、回答ボタン用の階名定義を持つ(2026-09-18追加)", () => {
+  const syllable = syllableFor(12);
+  assert.equal(syllable.code, "doH");
+  assert.equal(syllable.displayLabel, "ド↑");
+  assert.equal(syllable.enharmonicLabel, null);
+  assert.equal(INTERVAL_SEMITONES.includes(12), false, "出題対象のINTERVAL_SEMITONESには含まれない");
+});
+
+test("「#」を含む階名には♭側の異名同音表記が付き、それ以外はnull(2026-09-18更新)", () => {
+  const expectedEnharmonic = {
+    0: null, 1: "レ♭", 2: null, 3: "ミ♭", 4: null, 5: null, 6: "ソ♭",
+    7: null, 8: "ラ♭", 9: null, 10: "シ♭", 11: null, 12: null, 13: "レ♭↑",
+  };
+  ANSWER_BUTTON_SEMITONES.forEach((semitone) => {
+    assert.equal(syllableFor(semitone).enharmonicLabel, expectedEnharmonic[semitone]);
   });
 });
 

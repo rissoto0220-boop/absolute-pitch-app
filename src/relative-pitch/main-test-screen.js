@@ -4,13 +4,13 @@ import { runQuestionTimeline } from "./question-timeline.js";
 import { resumeAudioContext } from "../shared/audio-buffer-player.js";
 import { toLocalIso } from "../shared/iso-time.js";
 import { ANSWER_LABELS } from "./layout-comparison-screen.js";
-import { INTERVAL_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
+import { ANSWER_BUTTON_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
 import { generateTestSequence, TOTAL_QUESTIONS } from "./question-generator.js";
 import { formatAccuracyLabel } from "./scoring.js";
 import * as sessionStore from "./session-store.js";
 
 // screenEl: 描画先のDOM要素。
-// layout: フェーズ2で選んだ回答レイアウト("circular"または"grid")。
+// layout: フェーズ2で選んだ回答レイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
 // session: このセッションの保存対象(練習と共通のセッション)。
 // persistSession: 保存を反映させるために呼ぶ関数。
 // onBack: 結果画面から戻る際に呼ぶ。
@@ -83,7 +83,7 @@ export function showMainTestFlow({
           layout,
           onSelect: (label, labelIndex) => {
             // 正解判定・保存には表示ラベルではなく半音差(内部コード相当)を使う(仕様10.2)。
-            timeline.submitAnswer(INTERVAL_SEMITONES[labelIndex]);
+            timeline.submitAnswer(ANSWER_BUTTON_SEMITONES[labelIndex]);
           },
         });
       },
