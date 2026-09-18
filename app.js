@@ -35,6 +35,7 @@ import {
 } from "./src/absolute-pitch/reports.js";
 import { toCsv, downloadTextFile } from "./src/shared/csv.js";
 import { formatDisplayDateTime } from "./src/shared/display-format.js";
+import { showVersionSelectionScreen } from "./src/relative-pitch/version-selection-screen.js";
 import { showLayoutComparisonScreen } from "./src/relative-pitch/layout-comparison-screen.js";
 import { showQuestionTimelineDemoScreen } from "./src/relative-pitch/question-timeline-demo-screen.js";
 import { showPracticeFlow } from "./src/relative-pitch/practice-screen.js";
@@ -127,44 +128,52 @@ function showIdConfirm() {
     e.preventDefault();
     showQuestionTimelineDemoScreen({ screenEl, onBack: () => showIdConfirm() });
   });
-  // 相対音感フェーズ6: 保存ありの一連の流れ(回答レイアウト選択→練習→本番)。
+  // 相対音感フェーズ5: 簡易版/完全版の選択→(フェーズ6以前は)回答レイアウト選択→練習→本番。
   // セッションは練習・本番を通じて1つを使い回す(仕様17〜19章。絶対音感と同じ考え方)。
   document.getElementById("dev-relative-pitch-full").addEventListener("click", (e) => {
     e.preventDefault();
-    showLayoutComparisonScreen({
+    showVersionSelectionScreen({
       screenEl,
       onBack: () => showIdConfirm(),
-      onConfirm: (layout) => {
-        // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
-        // (これから始めるセッション自体は完了済みに含めない)。
-        const existingData = loadRelativePitchParticipantData(participantId, localStorage);
-        const hasCompletedBefore = hasCompletedSession(existingData.sessions, "simplified");
-
-        // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
-        // 新しいsession_idでこのセッションを開始する(仕様17.1)。
-        const result = startRelativePitchSession(participantId, { storage: localStorage, answerLayout: layout });
-        const relativeSession = result.session;
-        const persistRelativeSession = () => persistRelativePitchParticipantData(participantId, result.data, localStorage);
-
-        showPracticeFlow({
+      onSelect: (testVersion) => {
+        showLayoutComparisonScreen({
           screenEl,
-          layout,
-          hasCompletedBefore,
-          session: relativeSession,
-          persistSession: persistRelativeSession,
-          onFinished: () => {
-            showMainTestFlow({
+          onBack: () => showIdConfirm(),
+          onConfirm: (layout) => {
+            // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
+            // (これから始めるセッション自体は完了済みに含めない)。簡易版・完全版は別々に判定する。
+            const existingData = loadRelativePitchParticipantData(participantId, localStorage);
+            const hasCompletedBefore = hasCompletedSession(existingData.sessions, testVersion);
+
+            // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
+            // 新しいsession_idでこのセッションを開始する(仕様17.1)。
+            const result = startRelativePitchSession(participantId, { storage: localStorage, testVersion, answerLayout: layout });
+            const relativeSession = result.session;
+            const persistRelativeSession = () => persistRelativePitchParticipantData(participantId, result.data, localStorage);
+
+            // フェーズ6(練習・本番画面の一般化)完了まで、練習・本番の中身は簡易版のまま
+            // (testVersion="full"を選んでも、まだ完全版の問題セットには切り替わらない)。
+            showPracticeFlow({
               screenEl,
               layout,
+              hasCompletedBefore,
               session: relativeSession,
               persistSession: persistRelativeSession,
-              onBack: () => showIdConfirm(),
-              onShowHistory: () => {
-                showRelativePitchHistoryScreen({
+              onFinished: () => {
+                showMainTestFlow({
                   screenEl,
-                  participantId,
-                  participantData: result.data,
+                  layout,
+                  session: relativeSession,
+                  persistSession: persistRelativeSession,
                   onBack: () => showIdConfirm(),
+                  onShowHistory: () => {
+                    showRelativePitchHistoryScreen({
+                      screenEl,
+                      participantId,
+                      participantData: result.data,
+                      onBack: () => showIdConfirm(),
+                    });
+                  },
                 });
               },
             });
