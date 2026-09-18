@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   INTERVAL_SEMITONES,
+  FULL_INTERVAL_SEMITONES,
+  FULL_KEYS,
   SYLLABLES_BY_SEMITONE,
   ANSWER_BUTTON_SEMITONES,
   KEY_BASE_NOTES,
@@ -10,6 +12,7 @@ import {
   buildQuestion,
   isCorrectAnswer,
   PRACTICE_QUESTIONS,
+  FULL_PRACTICE_QUESTIONS,
   cadenceFilenameFor,
   referenceFilenameFor,
   targetFilenameFor,
@@ -150,4 +153,58 @@ test("練習の固定3問は仕様13.1の通り(Key C:ミ, Key C:ソ♯, Key Fis
       ["Fis", 4, "MiM", "ミ", "Ais4"],
     ],
   );
+});
+
+test("完全版で使用する半音差は1〜11の11種類(仕様6.2、2026-09-18追加)", () => {
+  assert.deepEqual(FULL_INTERVAL_SEMITONES, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  assert.equal(FULL_INTERVAL_SEMITONES.includes(13), false, "簡易版だけの半音差13は含まない");
+});
+
+test("完全版で使用する4キーはC・Es・Fis・A(仕様6.2、2026-09-18追加)", () => {
+  assert.deepEqual(FULL_KEYS, ["C", "Es", "Fis", "A"]);
+  FULL_KEYS.forEach((key) => {
+    assert.ok(KEY_BASE_NOTES[key], `KEY_BASE_NOTESに${key}の基準音が定義されているはず`);
+  });
+});
+
+test("Key Esの基準音はEs4(表示用)、目的音の計算は異名同音のDisとして扱う(仕様6.2、2026-09-18追加)", () => {
+  assert.equal(KEY_BASE_NOTES.Es, "Es4");
+  const expected = {
+    1: "E4", 2: "F4", 3: "Fis4", 4: "G4", 5: "Gis4", 6: "A4",
+    7: "Ais4", 8: "H4", 9: "C5", 10: "Cis5", 11: "D5",
+  };
+  FULL_INTERVAL_SEMITONES.forEach((semitone) => {
+    assert.equal(targetNoteFor("Es", semitone), expected[semitone]);
+  });
+});
+
+test("Key Aの基準音はA4、目的音の計算は仕様6.2の通り(2026-09-18追加)", () => {
+  assert.equal(KEY_BASE_NOTES.A, "A4");
+  const expected = {
+    1: "Ais4", 2: "H4", 3: "C5", 4: "Cis5", 5: "D5", 6: "Dis5",
+    7: "E5", 8: "F5", 9: "Fis5", 10: "G5", 11: "Gis5",
+  };
+  FULL_INTERVAL_SEMITONES.forEach((semitone) => {
+    assert.equal(targetNoteFor("A", semitone), expected[semitone]);
+  });
+});
+
+test("完全版の練習固定4問は仕様6.2の通り(4キーを1問ずつ)", () => {
+  assert.equal(FULL_PRACTICE_QUESTIONS.length, 4);
+  assert.deepEqual(
+    FULL_PRACTICE_QUESTIONS.map((q) => [q.keyCode, q.intervalSemitones, q.syllableCode, q.displayLabel, q.targetNote]),
+    [
+      ["C", 4, "MiM", "ミ", "E4"],
+      ["Es", 7, "SoM", "ソ", "Ais4"],
+      ["Fis", 2, "ReM", "レ", "Gis4"],
+      ["A", 9, "LaM", "ラ", "Fis5"],
+    ],
+  );
+});
+
+test("cadenceFilenameFor・referenceFilenameForはKey Es・Aでも正しいファイル名を返す(2026-09-18追加)", () => {
+  assert.equal(cadenceFilenameFor("Es"), "cadence_Es.wav");
+  assert.equal(cadenceFilenameFor("A"), "cadence_A.wav");
+  assert.equal(referenceFilenameFor("Es"), "reference_Es4.wav");
+  assert.equal(referenceFilenameFor("A"), "reference_A4.wav");
 });

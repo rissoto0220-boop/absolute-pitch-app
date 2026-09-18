@@ -1,14 +1,25 @@
-// 相対音感テスト(簡易版)の半音差・階名・目的音の対応表(仕様書 relative-pitch-test-spec.md §9〜10・13)。
+// 相対音感テスト(簡易版・完全版)の半音差・階名・目的音の対応表
+// (仕様書 relative-pitch-test-spec.md §6.2・§9〜10・13)。
 // 絶対音感固有の処理(src/absolute-pitch/)とは混在させず、相対音感固有のデータとしてここに置く。
 
-// キーごとの基準音(=そのキーの「ド」、仕様9.2)。
+// キーごとの基準音(=そのキーの「ド」、仕様9.2)。参加者・研究者向けの表記に合わせた綴りを使う
+// (Esは♭系表記。目的音の計算では異名同音として扱う。下のCHROMATIC_INDEX_BY_KEY参照)。
 export const KEY_BASE_NOTES = {
   C: "C4",
+  Es: "Es4",
   Fis: "Fis4",
+  A: "A4",
 };
 
-// 使用する半音差の12種類(仕様10.1)。半音差0と12は出題しない。
+// 完全版で使用する4キー(仕様6.2、2026-09-18確定)。
+export const FULL_KEYS = ["C", "Es", "Fis", "A"];
+
+// 使用する半音差の12種類(仕様10.1)。半音差0と12は出題しない。簡易版専用。
 export const INTERVAL_SEMITONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13];
+
+// 完全版で使用する半音差の11種類(仕様6.2、2026-09-18確定)。
+// 簡易版の12種類から、オクターブを超える半音差13を除いた単純な連続集合。
+export const FULL_INTERVAL_SEMITONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
 // 半音差ごとの階名定義(仕様10.2)。
 // code: 正解判定に使う内部コード(参加者へは表示しない)。
@@ -43,24 +54,27 @@ export const SYLLABLES_BY_SEMITONE = {
 // 自動的に不正解として扱われる(正解判定ロジックの変更は不要)。
 export const ANSWER_BUTTON_SEMITONES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
-// キーごとの目的音対応表(仕様10.3・10.4)。
-const TARGET_NOTES_BY_KEY = {
-  C: {
-    1: "Cis4", 2: "D4", 3: "Dis4", 4: "E4", 5: "F4", 6: "Fis4",
-    7: "G4", 8: "Gis4", 9: "A4", 10: "Ais4", 11: "H4", 13: "Cis5",
-  },
-  Fis: {
-    1: "G4", 2: "Gis4", 3: "A4", 4: "Ais4", 5: "H4", 6: "C5",
-    7: "Cis5", 8: "D5", 9: "Dis5", 10: "E5", 11: "F5", 13: "G5",
-  },
-};
+// 目的音の計算に使う、絶対音感の音源ライブラリと同じ命名(♯系のみ、public/sounds/参照)の
+// 半音階。目的音WAVは絶対音感の既存単音WAVを共用するため、常にこの命名で解決する必要がある。
+const CHROMATIC_SCALE = ["C", "Cis", "D", "Dis", "E", "F", "Fis", "G", "Gis", "A", "Ais", "H"];
+
+// 各キーの主音が、上のCHROMATIC_SCALEの何番目(オクターブ4基準)にあたるかの対応。
+// KeyEsは♭系表記だが、既存音源(♯系命名)を参照するため異名同音のDis(index 3)として扱う
+// (仕様6.2「Key Esの内部処理」、2026-09-18確定)。
+const CHROMATIC_INDEX_BY_KEY = { C: 0, Es: 3, Fis: 6, A: 9 };
 
 export function syllableFor(semitone) {
   return SYLLABLES_BY_SEMITONE[semitone];
 }
 
+// 基準音(主音)から半音差ぶん上の目的音を計算する(仕様10.3・10.4・6.2)。
+// 常にCHROMATIC_SCALEの♯系命名で返すため、キーの表記(EsのようなB系含む)に関わらず
+// 既存の絶対音感音源ライブラリを正しく参照できる。
 export function targetNoteFor(keyCode, semitone) {
-  return TARGET_NOTES_BY_KEY[keyCode][semitone];
+  const totalIndex = CHROMATIC_INDEX_BY_KEY[keyCode] + semitone;
+  const noteName = CHROMATIC_SCALE[totalIndex % 12];
+  const octave = 4 + Math.floor(totalIndex / 12);
+  return `${noteName}${octave}`;
 }
 
 // キーと半音差から、1問分の情報一式を組み立てる。
@@ -101,9 +115,18 @@ export function isCorrectAnswer(question, responseSemitone) {
   return question.intervalSemitones === responseSemitone;
 }
 
-// 練習固定3問(仕様13.1)。この順番で1回だけ提示する。ランダム化しない。
+// 練習固定3問(仕様13.1)。この順番で1回だけ提示する。ランダム化しない。簡易版専用。
 export const PRACTICE_QUESTIONS = [
   buildQuestion("C", 4),
   buildQuestion("C", 8),
   buildQuestion("Fis", 4),
+];
+
+// 完全版の練習固定4問(仕様6.2「練習問題」、2026-09-18確定)。4キーを1問ずつ体験する。
+// この順番で1回だけ提示する。ランダム化しない。
+export const FULL_PRACTICE_QUESTIONS = [
+  buildQuestion("C", 4),
+  buildQuestion("Es", 7),
+  buildQuestion("Fis", 2),
+  buildQuestion("A", 9),
 ];
