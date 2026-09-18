@@ -51,7 +51,7 @@ export function showQuestionTimelineDemoScreen({ screenEl, onBack }) {
           container: document.getElementById("answer-panel-container"),
           labels: ANSWER_LABELS,
           layout: "circular",
-          onSelect: (label) => timeline.submitAnswer(label),
+          onSelect: (label) => timeline.submitAnswer(typeof label === "string" ? label : label.text),
         });
       },
       onResult: ({ responseCode, responseTimeMs }) => {
