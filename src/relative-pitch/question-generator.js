@@ -131,22 +131,52 @@ export function validateQuestionOrder(sequence) {
 
 export const FULL_TOTAL_QUESTIONS = FULL_INTERVAL_SEMITONES.length * FULL_KEYS.length; // 44
 
-// 固定ブロック方式を4キーへ一般化して本番44問の出題順を生成する(仕様6.2「出題生成」)。
+// 固定ブロック方式を4キーへ一般化して本番44問の出題順を生成する(仕様6.2「出題生成」、2026-09-18再修正)。
 //
 // 簡易版と異なり、11半音差×4キー=44通り全てを網羅する完全実施計画のため、
 // 「属性ペアをキーへ割り当てる」手順(assignKeysToPairs相当)は不要
 // (サンプリングの偏りが原理的に発生しないため)。
 //
-// 1. 半音差ごとに1ブロック(11ブロック)を作る。各ブロックは、その半音差をC・Es・Fis・Aの
-//    4キーで出題する4問で構成する
-// 2. 各ブロック内の4問の順序をシャッフルする
-// 3. 11ブロック自体の順序をシャッフルする
+// 過去に「半音差ごとに1ブロック(4キー分、4キーとも同じ半音差)を作る」方式を試したが、
+// そのブロック構造のせいで同じ半音差(=同じ階名)が必ず4問連続してしまう不具合が
+// 手動確認で見つかった。次に「44通りを単純にシャッフルし、条件を満たすまで作り直す」
+// 方式を試したが、シャッフル1回が条件を満たす確率が実測で約1%しかなく、作り直しの
+// 回数が非常に多くなっていた。
 //
-// 各ブロックは常に4キー全てを1問ずつ含むため、同じキーが3問以上連続することは
-// 構造上起こり得ない(ブロックの境界をまたいでも、同じキーが続くのは最大2問まで)。
+// そこで、ブロック構造(11ブロック、各ブロック4キー1問ずつ)は維持しつつ、
+// 「各キーがどのブロックでどの半音差を出題するか」を次の式でランダムに決める方式にした。
+//
+//   半音差の位置(0〜10) = (ブロック番号 + キーの番号 × step) mod 11
+//
+// 11は素数なので、この式は以下を数学的に保証する。
+// - 固定したキーについてブロック番号を0〜10まで動かすと、位置が0〜10を重複なく1周する
+//   (=各キーは11種類の半音差をちょうど1回ずつ担当する。44通りの重複が起こり得ない)
+// - 固定したブロックについてキーの番号を0〜3まで動かすと、位置が4つとも異なる
+//   (=同じブロック内で2キー以上が同じ半音差になることが起こり得ない)
+// この構造により、シャッフル1回が「同じキー3問以上連続なし・同じ半音差の連続なし」を
+// 満たす確率が実測で約46%まで上がり、作り直しの回数を大きく減らせた。
 export function generateFullTestSequence(randomFn = Math.random) {
-  const blocks = FULL_INTERVAL_SEMITONES.map((semitone) => {
-    const questions = FULL_KEYS.map((keyCode) => buildQuestion(keyCode, semitone));
+  // 満たせないまま尽きる確率は、成功率約46%なら天文学的に低い(念のため200回を上限にする)。
+  const MAX_ATTEMPTS = 200;
+  let sequence = buildFullSequenceAttempt(randomFn);
+  for (let attempt = 1; attempt < MAX_ATTEMPTS && !satisfiesFullOrderConstraints(sequence); attempt += 1) {
+    sequence = buildFullSequenceAttempt(randomFn);
+  }
+
+  validateFullQuestionOrder(sequence);
+  return sequence;
+}
+
+function buildFullSequenceAttempt(randomFn) {
+  const semitoneCount = FULL_INTERVAL_SEMITONES.length; // 11
+  const shuffledSemitones = shuffle(FULL_INTERVAL_SEMITONES, randomFn);
+  const step = 1 + Math.floor(randomFn() * (semitoneCount - 1)); // 1〜10のいずれか
+
+  const blocks = shuffledSemitones.map((_, blockIndex) => {
+    const questions = FULL_KEYS.map((keyCode, keyIndex) => {
+      const position = (blockIndex + keyIndex * step) % semitoneCount;
+      return buildQuestion(keyCode, shuffledSemitones[position]);
+    });
     return shuffle(questions, randomFn);
   });
 
@@ -158,9 +188,17 @@ export function generateFullTestSequence(randomFn = Math.random) {
       sequence.push({ ...question, keyBlockNumber: blockIndex + 1 });
     });
   });
-
-  validateFullQuestionOrder(sequence);
   return sequence;
+}
+
+function satisfiesFullOrderConstraints(sequence) {
+  let sameKeyStreak = 1;
+  for (let i = 1; i < sequence.length; i += 1) {
+    sameKeyStreak = sequence[i].keyCode === sequence[i - 1].keyCode ? sameKeyStreak + 1 : 1;
+    if (sameKeyStreak >= 3) return false;
+    if (sequence[i].intervalSemitones === sequence[i - 1].intervalSemitones) return false;
+  }
+  return true;
 }
 
 // 完全版・出題開始前の検査(仕様6.2「出題生成」)。条件を満たさない場合は例外を投げ、
@@ -204,6 +242,9 @@ export function validateFullQuestionOrder(sequence) {
     sameKeyStreak = sequence[i].keyCode === sequence[i - 1].keyCode ? sameKeyStreak + 1 : 1;
     if (sameKeyStreak >= 3) {
       throw new Error("同じキーが3問以上連続しています");
+    }
+    if (sequence[i].intervalSemitones === sequence[i - 1].intervalSemitones) {
+      throw new Error("同じ半音差(階名)が連続しています");
     }
   }
 

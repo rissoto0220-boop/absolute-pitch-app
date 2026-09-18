@@ -133,7 +133,7 @@ test("generateFullTestSequence: 44通りの(キー,半音差)組み合わせが�
   });
 });
 
-test("generateFullTestSequence: 11ブロックあり、各ブロックに4キーが1問ずつ含まれる(仕様6.2)", () => {
+test("generateFullTestSequence: 11ブロックあり、各ブロックに4キーが1問ずつ含まれる(仕様6.2、2026-09-18再修正)", () => {
   const sequence = generateFullTestSequence();
   const blockNumbers = new Set(sequence.map((q) => q.keyBlockNumber));
   assert.equal(blockNumbers.size, 11);
@@ -144,7 +144,18 @@ test("generateFullTestSequence: 11ブロックあり、各ブロックに4キー
   }
 });
 
-test("generateFullTestSequence: 同じキーが3問以上連続しない。既定の乱数で200回生成しても検査に通る(仕様6.2)", () => {
+test("generateFullTestSequence: 同じブロック内では4キーとも半音差が異なる(仕様6.2、2026-09-18再修正)", () => {
+  for (let trial = 0; trial < 200; trial += 1) {
+    const sequence = generateFullTestSequence();
+    for (let blockNumber = 1; blockNumber <= 11; blockNumber += 1) {
+      const block = sequence.filter((q) => q.keyBlockNumber === blockNumber);
+      const uniqueSemitones = new Set(block.map((q) => q.intervalSemitones));
+      assert.equal(uniqueSemitones.size, 4, `trial ${trial}, block ${blockNumber}: 半音差が重複している`);
+    }
+  }
+});
+
+test("generateFullTestSequence: 同じキーが3問以上連続せず、同じ半音差(階名)も連続しない。既定の乱数で200回生成しても検査に通る(仕様6.2、2026-09-18修正)", () => {
   for (let trial = 0; trial < 200; trial += 1) {
     const sequence = generateFullTestSequence();
     assert.doesNotThrow(() => validateFullQuestionOrder(sequence));
@@ -153,14 +164,30 @@ test("generateFullTestSequence: 同じキーが3問以上連続しない。既�
     for (let i = 1; i < sequence.length; i += 1) {
       streak = sequence[i].keyCode === sequence[i - 1].keyCode ? streak + 1 : 1;
       assert.ok(streak < 3, `trial ${trial}, index ${i}: 同じキーが3問以上連続`);
+      assert.notEqual(
+        sequence[i].intervalSemitones,
+        sequence[i - 1].intervalSemitones,
+        `trial ${trial}, index ${i}: 同じ半音差(階名)が連続`,
+      );
     }
   }
 });
 
+// 完全版の生成は条件を満たすまで作り直す(satisfiesFullOrderConstraints)ため、周期の短い
+// 固定配列(fakeRandomSequence)だと、たまたま条件を満たす組み合わせが一つも出せずに
+// 詰まってしまうことがある(周期内の全パターンを試しても満たせない場合、何度繰り返しても
+// 満たせない)。そのため、この再現性テストだけは周期の長い単純な疑似乱数生成器(LCG)を使う。
+function makeLcgRandom(seed) {
+  let state = seed;
+  return () => {
+    state = (state * 1103515245 + 12345) & 0x7fffffff;
+    return state / 0x7fffffff;
+  };
+}
+
 test("generateFullTestSequence: 固定乱数を渡すと同じ出題順を再現できる", () => {
-  const seed = [0.1, 0.6, 0.2, 0.7, 0.3, 0.8, 0.9, 0.4, 0.15, 0.65, 0.25, 0.75, 0.35, 0.85, 0.05];
-  const first = generateFullTestSequence(fakeRandomSequence(seed));
-  const second = generateFullTestSequence(fakeRandomSequence(seed));
+  const first = generateFullTestSequence(makeLcgRandom(42));
+  const second = generateFullTestSequence(makeLcgRandom(42));
   assert.deepEqual(first, second);
 });
 
