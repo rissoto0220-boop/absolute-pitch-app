@@ -15,6 +15,11 @@ import {
 } from "./reports.js";
 import { formatAccuracyLabel } from "./scoring.js";
 
+// 履歴一覧には簡易版・完全版のセッションが混在し得るため、行ごとにバージョンを明記する
+// (総問題数・分母がバージョンによって異なり、ラベルが無いと紛らわしいため。仕様19章と同じ
+// 「同じ系列へ無条件に混在させない」という考え方を、一覧表示でも踏襲する)。
+const VERSION_LABELS = { simplified: "簡易版", full: "完全版" };
+
 // participantId: 参加者ID。
 // participantData: session-store.jsのloadParticipantData()が返す形({ sessions: [...] })。
 // onBack: 「最初からやり直す」等、この画面を出た際に呼ぶ。
@@ -23,10 +28,11 @@ export function showHistoryScreen({ screenEl, participantId, participantData, on
   let includeInterruptedInCsv = false;
 
   function formatRow(row) {
+    const versionLabel = VERSION_LABELS[row.testVersion] ?? row.testVersion;
     if (row.sessionStatus === "interrupted") {
-      return `<li>第${row.attemptNumber}回 — ${escapeHtml(formatDisplayDateTime(row.startedAt))} — 中断</li>`;
+      return `<li>第${row.attemptNumber}回(${versionLabel}) — ${escapeHtml(formatDisplayDateTime(row.startedAt))} — 中断</li>`;
     }
-    return `<li>第${row.attemptNumber}回 — ${escapeHtml(formatDisplayDateTime(row.startedAt))} — ${row.correctCount} / ${row.totalQuestions}(正答率 ${formatAccuracyLabel(row.correctCount, row.totalQuestions)})</li>`;
+    return `<li>第${row.attemptNumber}回(${versionLabel}) — ${escapeHtml(formatDisplayDateTime(row.startedAt))} — ${row.correctCount} / ${row.totalQuestions}(正答率 ${formatAccuracyLabel(row.correctCount, row.totalQuestions)})</li>`;
   }
 
   function render() {
