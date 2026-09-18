@@ -1,13 +1,12 @@
 // セッション・回答記録の組み立てとブラウザ保存(仕様 relative-pitch-test-spec.md §17〜19)。
 // 参加者IDごとに、絶対音感とは別のlocalStorageキーへ、その参加者の相対音感の全セッションを
 // まとめて保存する(仕様18.3で確定: 絶対音感の保存キー・コードには一切触れない)。
-// 簡易版・完全版は、同じキーの中にtestVersion列で区別して保存する想定(仕様18.3)。
+// 簡易版・完全版は、同じキーの中にtestVersion列で区別して保存する(仕様18.3)。
 import { loadJson, saveJson } from "../shared/storage.js";
 import { toLocalIso } from "../shared/iso-time.js";
 
 const SCHEMA_VERSION = 1;
 const TEST_TYPE = "relative_pitch";
-const TEST_VERSION = "simplified"; // 完全版はまだ実装しない(仕様6.2)
 
 function storageKeyFor(participantId) {
   return `relative-pitch:${participantId}`;
@@ -48,9 +47,11 @@ function reconcileDanglingSessions(data, now) {
   });
 }
 
+// options.testVersion: "simplified"(既定)または"full"(仕様6.2・18.3)。
 // options.answerLayout: フェーズ2で選んだレイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
 export function startSession(participantId, {
   storage,
+  testVersion = "simplified",
   answerLayout = "",
   now = () => toLocalIso(),
   generateId = () => crypto.randomUUID(),
@@ -61,7 +62,7 @@ export function startSession(participantId, {
   const session = {
     sessionId: generateId(),
     testType: TEST_TYPE,
-    testVersion: TEST_VERSION,
+    testVersion,
     startedAt: now(),
     endedAt: "",
     sessionStatus: null, // completed/interrupted が決まるまではnull(簡易版に強制終了はない、仕様15.1)

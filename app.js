@@ -44,7 +44,7 @@ import {
   loadParticipantData as loadRelativePitchParticipantData,
   persistParticipantData as persistRelativePitchParticipantData,
 } from "./src/relative-pitch/session-store.js";
-import { hasCompletedSimplifiedSession } from "./src/relative-pitch/practice-history.js";
+import { hasCompletedSession } from "./src/relative-pitch/practice-history.js";
 import { showHistoryScreen as showRelativePitchHistoryScreen } from "./src/relative-pitch/history-screen.js";
 
 const QUESTION_MS = 3000;
@@ -138,7 +138,7 @@ function showIdConfirm() {
         // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
         // (これから始めるセッション自体は完了済みに含めない)。
         const existingData = loadRelativePitchParticipantData(participantId, localStorage);
-        const hasCompletedBefore = hasCompletedSimplifiedSession(existingData.sessions);
+        const hasCompletedBefore = hasCompletedSession(existingData.sessions, "simplified");
 
         // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
         // 新しいsession_idでこのセッションを開始する(仕様17.1)。

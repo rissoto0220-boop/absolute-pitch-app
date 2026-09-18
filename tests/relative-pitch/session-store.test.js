@@ -42,6 +42,12 @@ test("startSessionは新しいセッションを作り、test_type/test_version�
   assert.equal(loadParticipantData("P00001", storage).sessions[0].sessionId, "s1");
 });
 
+test("startSession: testVersionを指定すると完全版セッションとして保存される(仕様6.2、2026-09-18追加)", () => {
+  const storage = makeFakeStorage();
+  const { session } = startSession("P00001", { storage, testVersion: "full", now: makeClock(), generateId: () => "s1" });
+  assert.equal(session.testVersion, "full");
+});
+
 test("絶対音感とは別のlocalStorageキーに保存される(仕様18.3: 別キー方式)", () => {
   const storage = makeFakeStorage();
   startSession("P00001", { storage, now: makeClock(), generateId: () => "s1" });
