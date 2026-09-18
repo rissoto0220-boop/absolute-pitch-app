@@ -8,8 +8,12 @@
 
 生成するファイル(いずれも public/sounds/ 内。絶対音感の単音WAVと同じ1つのフォルダー):
 
-- cadence_C.wav / cadence_Fis.wav: カデンツ(属七和音→主和音、仕様8.2〜8.4)。長さ2.0秒
-- reference_C4.wav / reference_Fis4.wav: 基準音(仕様9.1・9.3)。長さ1.0秒+短いフェードアウト
+- cadence_C.wav / cadence_Fis.wav / cadence_Es.wav / cadence_A.wav: カデンツ
+  (属七和音→主和音、仕様8.2〜8.4・6.2)。長さ2.0秒
+- reference_C4.wav / reference_Fis4.wav / reference_Es4.wav / reference_A4.wav: 基準音
+  (仕様9.1・9.3・6.2)。長さ1.0秒+短いフェードアウト
+
+完全版(仕様6.2)のKey Es・Aも同じ考え方(C調の構成音を必要な半音数だけ平行移調)で追加した。
 
 目的音は絶対音感の既存WAV(public/sounds/内の単音、例: E4.wav)をそのまま使うため、
 ここでは生成しない(仕様9.1)。
@@ -31,11 +35,13 @@ CADENCE_CROSSFADE_SECONDS = 0.015  # 属七和音→主和音の切り替わり�
 NOTE_INDEX = {
     "C": 0, "Cis": 1, "D": 2, "Dis": 3, "E": 4, "F": 5,
     "Fis": 6, "G": 7, "Gis": 8, "A": 9, "Ais": 10, "H": 11,
+    "Es": 3,  # Esは♭系表記だが、周波数計算はDisと同じ(異名同音、仕様6.2「Key Esの内部処理」)
 }
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "public" / "sounds"
 
-# カデンツのボイシング(仕様8.3・8.4)。
+# カデンツのボイシング(仕様8.3・8.4・6.2)。Es・Aは、C調の構成音をそれぞれ3半音・9半音
+# 平行移調したもの(§8.4「C調の全構成音を6半音上へ平行移調する」と同じ考え方)。
 CADENCE_VOICINGS = {
     "C": {
         "dominant": ["G3", "F4", "G4", "H4"],
@@ -45,10 +51,18 @@ CADENCE_VOICINGS = {
         "dominant": ["Cis4", "H4", "Cis5", "F5"],
         "tonic": ["Fis4", "Ais4", "Cis5", "Fis5"],
     },
+    "Es": {
+        "dominant": ["Ais3", "Gis4", "Ais4", "D5"],
+        "tonic": ["Dis4", "G4", "Ais4", "Dis5"],
+    },
+    "A": {
+        "dominant": ["E4", "D5", "E5", "Gis5"],
+        "tonic": ["A4", "Cis5", "E5", "A5"],
+    },
 }
 
-# 基準音(仕様9.2)。
-REFERENCE_NOTES = {"C": "C4", "Fis": "Fis4"}
+# 基準音(仕様9.2・6.2)。
+REFERENCE_NOTES = {"C": "C4", "Fis": "Fis4", "Es": "Es4", "A": "A4"}
 
 
 def frequency_for(german_note):
@@ -118,10 +132,10 @@ def generate_reference(key_code):
 
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    for key_code in ["C", "Fis"]:
+    for key_code in ["C", "Fis", "Es", "A"]:
         generate_cadence(key_code)
         generate_reference(key_code)
-    print("done: 4 files")
+    print("done: 8 files")
 
 
 if __name__ == "__main__":
