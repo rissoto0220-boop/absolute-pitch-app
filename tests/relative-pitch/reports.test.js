@@ -155,6 +155,37 @@ test("buildSessionHistoryRows: 完了時は12問全て答えたことになり�
   assert.equal(row.practice_questions_presented, 3);
 });
 
+test("buildSessionHistoryRows: 完全版(44問)は総問題数44を分母に正答率を算出する(仕様6.2、2026-09-18追加)", () => {
+  const testResponses = [
+    ...Array.from({ length: 40 }, (_, i) => makeResponse({ questionNumber: i + 1, outcome: "correct" })),
+    ...Array.from({ length: 4 }, (_, i) => makeResponse({ questionNumber: 41 + i, outcome: "incorrect" })),
+  ];
+  const session = makeSession({
+    testVersion: "full",
+    generatedQuestionOrder: Array.from({ length: 44 }, (_, i) => (i % 11) + 1),
+    responses: testResponses,
+  });
+  const [row] = buildSessionHistoryRows("P00001", [session], true);
+
+  assert.equal(row.questions_presented, 44);
+  assert.equal(row.correct_count, 40);
+  assert.equal(row.incorrect_count, 4);
+  assert.equal(row.accuracy, 90.9);
+});
+
+test("buildHistorySummary: 完全版セッションはtotalQuestionsが44になる(2026-09-18追加)", () => {
+  const session = makeSession({
+    testVersion: "full",
+    generatedQuestionOrder: Array.from({ length: 44 }, (_, i) => (i % 11) + 1),
+    responses: Array.from({ length: 44 }, (_, i) => makeResponse({ questionNumber: i + 1, outcome: "correct" })),
+  });
+  const [row] = buildHistorySummary([session], true);
+
+  assert.equal(row.totalQuestions, 44);
+  assert.equal(row.correctCount, 44);
+  assert.equal(row.accuracy, 100);
+});
+
 test("buildSessionHistoryRows: 中断セッションは正答率を空欄にする(完了扱いにしない)", () => {
   const testResponses = [
     makeResponse({ questionNumber: 1, outcome: "correct" }),

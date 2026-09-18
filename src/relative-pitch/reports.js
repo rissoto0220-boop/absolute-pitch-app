@@ -2,7 +2,6 @@
 // (仕様 relative-pitch-test-spec.md §19〜20)。
 // 正解数・正答率などは保存時に別途持たず、responsesから都度数え直す
 // (値がずれる心配をなくし、保存側の実装をシンプルに保つため。絶対音感reports.jsと同じ考え方)。
-import { TOTAL_QUESTIONS } from "./question-generator.js";
 import { calculateAccuracy } from "./scoring.js";
 import { toFilenameTimestamp } from "../shared/iso-time.js";
 
@@ -14,6 +13,9 @@ function summarize(session) {
   const incorrectCount = testResponses.filter((r) => r.outcome === "incorrect").length;
   // 中断時に進行していた問題(仕様17.2)。中断以外のセッションには存在しない。
   const interruptedRow = session.responses.find((r) => r.outcome === "interrupted");
+  // そのセッションの本番総問題数。簡易版は12、完全版は44になるが、固定値では持たず
+  // 本番開始時に保存された出題順(仕様18.2)の件数から求める(2026-09-18更新、フェーズ7)。
+  const totalQuestions = session.generatedQuestionOrder.length;
 
   return {
     practiceQuestionsPresented: practiceResponses.length,
@@ -21,9 +23,10 @@ function summarize(session) {
     questionsAnswered: answeredTestResponses.length,
     correctCount,
     incorrectCount,
+    totalQuestions,
     // 正答率は完了したセッションについてだけ意味を持つ(仕様15.1・21章)。
     // 中断セッションでは、途中までの数字を完了時と同じ扱いで見せないよう空欄にする。
-    accuracy: session.sessionStatus === "completed" ? calculateAccuracy(correctCount, TOTAL_QUESTIONS) : "",
+    accuracy: session.sessionStatus === "completed" ? calculateAccuracy(correctCount, totalQuestions) : "",
     interruptedPhase: interruptedRow ? interruptedRow.phase : "",
     interruptedQuestionNumber: interruptedRow ? interruptedRow.questionNumber : "",
   };
@@ -43,14 +46,18 @@ export function buildHistorySummary(sessions, includeInterrupted) {
     .sort((a, b) => (a.startedAt < b.startedAt ? -1 : a.startedAt > b.startedAt ? 1 : 0));
 
   return chronological
-    .map((session, index) => ({
-      attemptNumber: index + 1,
-      startedAt: session.startedAt,
-      sessionStatus: session.sessionStatus,
-      testVersion: session.testVersion,
-      correctCount: summarize(session).correctCount,
-      accuracy: summarize(session).accuracy,
-    }))
+    .map((session, index) => {
+      const s = summarize(session);
+      return {
+        attemptNumber: index + 1,
+        startedAt: session.startedAt,
+        sessionStatus: session.sessionStatus,
+        testVersion: session.testVersion,
+        correctCount: s.correctCount,
+        totalQuestions: s.totalQuestions,
+        accuracy: s.accuracy,
+      };
+    })
     .filter((row) => includeInterrupted || row.sessionStatus !== "interrupted");
 }
 

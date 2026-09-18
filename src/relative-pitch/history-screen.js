@@ -14,7 +14,6 @@ import {
   SESSION_HISTORY_HEADERS,
 } from "./reports.js";
 import { formatAccuracyLabel } from "./scoring.js";
-import { TOTAL_QUESTIONS } from "./question-generator.js";
 
 // participantId: 参加者ID。
 // participantData: session-store.jsのloadParticipantData()が返す形({ sessions: [...] })。
@@ -27,7 +26,7 @@ export function showHistoryScreen({ screenEl, participantId, participantData, on
     if (row.sessionStatus === "interrupted") {
       return `<li>第${row.attemptNumber}回 — ${escapeHtml(formatDisplayDateTime(row.startedAt))} — 中断</li>`;
     }
-    return `<li>第${row.attemptNumber}回 — ${escapeHtml(formatDisplayDateTime(row.startedAt))} — ${row.correctCount} / ${TOTAL_QUESTIONS}(正答率 ${formatAccuracyLabel(row.correctCount, TOTAL_QUESTIONS)})</li>`;
+    return `<li>第${row.attemptNumber}回 — ${escapeHtml(formatDisplayDateTime(row.startedAt))} — ${row.correctCount} / ${row.totalQuestions}(正答率 ${formatAccuracyLabel(row.correctCount, row.totalQuestions)})</li>`;
   }
 
   function render() {
