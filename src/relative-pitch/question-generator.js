@@ -1,6 +1,9 @@
 // 相対音感テスト簡易版・本番12問の出題順生成(仕様書 relative-pitch-test-spec.md §12)。
-// 練習(固定3問、intervals.jsのPRACTICE_QUESTIONS)では使わない、本番固有のロジック。
-import { buildQuestion } from "./intervals.js";
+// 完全版・本番44問の出題順生成(仕様書 relative-pitch-test-spec.md §6.2)。
+// 練習(固定問題、intervals.jsのPRACTICE_QUESTIONS/FULL_PRACTICE_QUESTIONS)では使わない、
+// 本番固有のロジック。簡易版用のロジックはそのまま残し、完全版用は新しい関数として追加する
+// (簡易版の出題生成・保存済みテストに影響を与えないため)。
+import { buildQuestion, FULL_KEYS, FULL_INTERVAL_SEMITONES } from "./intervals.js";
 
 // 属性ペア6組(仕様12.1)。同じinterval_label・scale_labelを持つ半音差の組。
 // 各組の一方をKey Cへ、もう一方をKey Fisへ割り当てる(仕様12.2)。
@@ -111,6 +114,89 @@ export function validateQuestionOrder(sequence) {
   const pairsHaveDifferentKeys = ATTRIBUTE_PAIRS.every(([a, b]) => keyBySemitone.get(a) !== keyBySemitone.get(b));
   if (!pairsHaveDifferentKeys) {
     throw new Error("属性ペアの2刺激が同じキーへ割り当てられています");
+  }
+
+  let sameKeyStreak = 1;
+  for (let i = 1; i < sequence.length; i += 1) {
+    sameKeyStreak = sequence[i].keyCode === sequence[i - 1].keyCode ? sameKeyStreak + 1 : 1;
+    if (sameKeyStreak >= 3) {
+      throw new Error("同じキーが3問以上連続しています");
+    }
+  }
+
+  return true;
+}
+
+// ---- ここから完全版(仕様6.2、2026-09-18確定) ----
+
+export const FULL_TOTAL_QUESTIONS = FULL_INTERVAL_SEMITONES.length * FULL_KEYS.length; // 44
+
+// 固定ブロック方式を4キーへ一般化して本番44問の出題順を生成する(仕様6.2「出題生成」)。
+//
+// 簡易版と異なり、11半音差×4キー=44通り全てを網羅する完全実施計画のため、
+// 「属性ペアをキーへ割り当てる」手順(assignKeysToPairs相当)は不要
+// (サンプリングの偏りが原理的に発生しないため)。
+//
+// 1. 半音差ごとに1ブロック(11ブロック)を作る。各ブロックは、その半音差をC・Es・Fis・Aの
+//    4キーで出題する4問で構成する
+// 2. 各ブロック内の4問の順序をシャッフルする
+// 3. 11ブロック自体の順序をシャッフルする
+//
+// 各ブロックは常に4キー全てを1問ずつ含むため、同じキーが3問以上連続することは
+// 構造上起こり得ない(ブロックの境界をまたいでも、同じキーが続くのは最大2問まで)。
+export function generateFullTestSequence(randomFn = Math.random) {
+  const blocks = FULL_INTERVAL_SEMITONES.map((semitone) => {
+    const questions = FULL_KEYS.map((keyCode) => buildQuestion(keyCode, semitone));
+    return shuffle(questions, randomFn);
+  });
+
+  const orderedBlocks = shuffle(blocks, randomFn);
+
+  const sequence = [];
+  orderedBlocks.forEach((block, blockIndex) => {
+    block.forEach((question) => {
+      sequence.push({ ...question, keyBlockNumber: blockIndex + 1 });
+    });
+  });
+
+  validateFullQuestionOrder(sequence);
+  return sequence;
+}
+
+// 完全版・出題開始前の検査(仕様6.2「出題生成」)。条件を満たさない場合は例外を投げ、
+// 本番を開始しない(簡易版のvalidateQuestionOrderと同じ考え方)。
+export function validateFullQuestionOrder(sequence) {
+  if (sequence.length !== FULL_TOTAL_QUESTIONS) {
+    throw new Error(`問題数が${FULL_TOTAL_QUESTIONS}ではありません: ${sequence.length}`);
+  }
+
+  const combinationKey = (q) => `${q.keyCode}:${q.intervalSemitones}`;
+  const uniqueCombinations = new Set(sequence.map(combinationKey));
+  if (uniqueCombinations.size !== FULL_TOTAL_QUESTIONS) {
+    throw new Error("キーと半音差の組み合わせ44通りが重複なく含まれていません");
+  }
+  const allCombinationsPresent = FULL_KEYS.every((keyCode) =>
+    FULL_INTERVAL_SEMITONES.every((semitone) => uniqueCombinations.has(`${keyCode}:${semitone}`)),
+  );
+  if (!allCombinationsPresent) {
+    throw new Error("キーと半音差の組み合わせ44通りが全て含まれていません");
+  }
+
+  FULL_KEYS.forEach((keyCode) => {
+    const count = sequence.filter((q) => q.keyCode === keyCode).length;
+    if (count !== FULL_INTERVAL_SEMITONES.length) {
+      throw new Error(`Key ${keyCode}が${count}問になっています(${FULL_INTERVAL_SEMITONES.length}問である必要があります)`);
+    }
+  });
+
+  for (let blockNumber = 1; blockNumber <= FULL_INTERVAL_SEMITONES.length; blockNumber += 1) {
+    const blockQuestions = sequence.filter((q) => q.keyBlockNumber === blockNumber);
+    if (blockQuestions.length !== FULL_KEYS.length) {
+      throw new Error(`ブロック${blockNumber}が${FULL_KEYS.length}問になっていません`);
+    }
+    if (new Set(blockQuestions.map((q) => q.keyCode)).size !== FULL_KEYS.length) {
+      throw new Error(`ブロック${blockNumber}に4キーが1問ずつ含まれていません`);
+    }
   }
 
   let sameKeyStreak = 1;
