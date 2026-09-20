@@ -1,0 +1,4 @@
+AuthType Basic
+AuthName "UEC-TST Data Download"
+AuthUserFile /Applications/MAMP/htdocs/uec-tst/server/download/.htpasswd
+Require valid-user

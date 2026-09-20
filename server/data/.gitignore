@@ -1,0 +1,4 @@
+# 研究データ(回答CSV)は公開リポジトリにコミットしない。.htaccessだけを管理対象にする。
+*
+!.gitignore
+!.htaccess
