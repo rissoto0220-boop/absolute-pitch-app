@@ -12,6 +12,6 @@ const ALLOWED_TEST_TYPES = [
 // php.iniのdate.timezone未設定(既定UTC)に依存せず固定する。
 date_default_timezone_set('Asia/Tokyo');
 
-// data_root。当面はhtdocs配下に置くが、data/.htaccessでWebからの直接
-// アクセスは拒否している(PHPからのファイル読み書きには影響しない)。
+// data_root。現状は公開ディレクトリ内にあり、Webからのアクセス制限は行っていない
+// (将来、公開ディレクトリの外へ移す予定)。
 const DATA_ROOT = __DIR__ . '/../data';

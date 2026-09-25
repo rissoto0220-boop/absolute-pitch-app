@@ -9,7 +9,7 @@
 ## 1. エンドポイント
 
 ```
-POST /uec-tst/server/api/session_create.php?testType={testType}&participantId={participantId}
+POST https://uec-tst.koto.jp/api/session_create.php?testType={testType}&participantId={participantId}
 ```
 
 | 項目 | 内容 |
@@ -230,7 +230,7 @@ data/{testType}/{participantId}/{yyyyMMdd}/{AP|RP}_{participantId}_{yyyyMMddHHmm
 ## 6. リクエスト例(curl)
 
 ```bash
-curl -X POST "https://<host>/uec-tst/server/api/session_create.php?testType=absolute_pitch&participantId=P00001" \
+curl -X POST "https://uec-tst.koto.jp/api/session_create.php?testType=absolute_pitch&participantId=P00001" \
   -H "Content-Type: application/json" \
   -d '{
     "sessionId": "3f2504e0-4f89-4f9d-9a7f-2f1e6b6a2b11",
@@ -245,12 +245,13 @@ curl -X POST "https://<host>/uec-tst/server/api/session_create.php?testType=abso
   }'
 ```
 
-動作確認用のブラウザツール(`tools/index.html`)を`uec-tst`リポジトリの`server/`配下に同梱しています。サンプルJSON(完了/中断の2パターン)を生成して実際に送信できるので、実装の参考にしてください。
+動作確認用のブラウザツール(`https://uec-tst.koto.jp/tools/index.html`)を用意しています(ソースは`uec-tst`リポジトリの`server/tools/`)。現在、このツールに認証はありません(将来的にBasic認証を掛ける予定です)。サンプルJSON(完了/中断の2パターン、絶対音感・相対音感)を生成して実際に送信できるので、実装の参考にしてください。送信したデータは本番サーバに保存されるため、実際の参加者IDとは別の番号を使ってください。
 
 ---
 
 ## 7. 未確定事項
 
 - 本APIは現時点で**無認証**です。将来的に認証を追加する場合は別途連携します。
+- 通信は`https://uec-tst.koto.jp/`(HTTPS)です。クライアントアプリの配信元が`https://uec-tst.koto.jp/`と異なるドメインの場合は、ブラウザの制限(CORS)により、現状のAPIは呼び出せません。その場合は事前にご連絡ください(サーバ側の対応が必要です)。
 - `testType`は現在`absolute_pitch`・`relative_pitch`が有効です。「調性感テスト」等が追加された際は別途通知します。
 - 相対音感の回答詳細CSVは、クライアントのCSV列に加え、セッション履歴を再構築するための列(`session_started_at`、`session_ended_at`、`practice_status`、`total_questions`)をサーバ側で追加しています。
