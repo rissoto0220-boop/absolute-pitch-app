@@ -1,0 +1,17 @@
+<?php
+declare(strict_types=1);
+
+// テスト種別の許可リスト。追加する場合は、lib/test_types.php にもプロファイルを登録すること
+// (未知のtestTypeはAPIで拒否する)。
+const ALLOWED_TEST_TYPES = [
+    'absolute_pitch',
+    'relative_pitch',
+];
+
+// 日付を含むダウンロードファイル名(results_yyyyMMdd.zip など)を日本時間で作るため、
+// php.iniのdate.timezone未設定(既定UTC)に依存せず固定する。
+date_default_timezone_set('Asia/Tokyo');
+
+// data_root。現状は公開ディレクトリ内にあり、Webからのアクセス制限は行っていない
+// (将来、公開ディレクトリの外へ移す予定)。
+const DATA_ROOT = __DIR__ . '/../data';

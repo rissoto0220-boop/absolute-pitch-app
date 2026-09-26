@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>API1 動作確認ツール</title>
+<style>
+  body { font-family: sans-serif; max-width: 900px; margin: 2em auto; padding: 0 1em; }
+  label { display: block; margin-top: 1em; font-weight: bold; }
+  input, textarea, select { width: 100%; box-sizing: border-box; font-family: monospace; }
+  textarea { height: 320px; }
+  button { margin-top: 1em; padding: 0.5em 1.5em; font-size: 1em; }
+  #result { white-space: pre-wrap; overflow-wrap: anywhere; box-sizing: border-box; max-width: 100%; font-family: monospace; background: #f4f4f4; padding: 1em; margin-top: 1em; border: 1px solid #ccc; }
+  .status-ok { color: green; }
+  .status-ng { color: #c00; }
+</style>
+</head>
+<body>
+<h1>API1 (session_create.php) 動作確認ツール</h1>
+<p>クライアント側の実装が未接続の間、このページから疑似的にセッションデータを送信してAPIを検証します。</p>
+
+<label for="testType">testType</label>
+<select id="testType">
+  <option value="absolute_pitch">absolute_pitch(絶対音感)</option>
+  <option value="relative_pitch">relative_pitch(相対音感)</option>
+</select>
+
+<div id="versionRow" hidden>
+  <label for="testVersion">testVersion(相対音感のみ)</label>
+  <select id="testVersion">
+    <option value="simplified">simplified(簡易版・本番12問)</option>
+    <option value="full">full(完全版・本番44問)</option>
+  </select>
+</div>
+
+<label for="participantId">participantId</label>
+<input id="participantId" value="P00001">
+
+<label for="payload">送信するセッションJSON</label>
+<textarea id="payload"></textarea>
+
+<button id="generate">サンプルセッションを生成(完了)</button>
+<button id="generateInterrupted">サンプルセッションを生成(中断)</button>
+<button id="send">API1へ送信</button>
+
+<div id="result"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>電通大TonalSenseTrainer データダウンロード</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>電通大TonalSenseTrainer データダウンロード</h1>
+
+<h2>回答詳細CSVファイル一覧</h2>
+<div class="filters">
+  <div>
+    <label for="filterTestType">テスト種別</label>
+    <select id="filterTestType">
+      <option value="">(すべて)</option>
+      <option value="absolute_pitch">絶対音感 (absolute_pitch)</option>
+      <option value="relative_pitch">相対音感 (relative_pitch)</option>
+    </select>
+  </div>
+  <div>
+    <label for="filterParticipantId">参加者ID</label>
+    <input id="filterParticipantId" placeholder="すべて">
+  </div>
+  <div>
+    <label for="filterFrom">開始日(YYYYMMDD)</label>
+    <input id="filterFrom" placeholder="指定なし">
+  </div>
+  <div>
+    <label for="filterTo">終了日(YYYYMMDD)</label>
+    <input id="filterTo" placeholder="指定なし">
+  </div>
+  <div>
+    <button id="searchButton">一覧を取得</button>
+    <button id="bulkDownloadButton" disabled>一括ダウンロード</button>
+  </div>
+</div>
+<div id="bulkMessage" class="error"></div>
+<div id="listArea" class="empty">「一覧を取得」を押してください。</div>
+
+<h2>セッション履歴CSVダウンロード(テスト種別単位・動的集計)</h2>
+<div class="history-form">
+  <div>
+    <label for="historyTestType">テスト種別</label>
+    <select id="historyTestType">
+      <option value="absolute_pitch">絶対音感 (absolute_pitch)</option>
+      <option value="relative_pitch">相対音感 (relative_pitch)</option>
+    </select>
+  </div>
+  <div>
+    <label for="historyParticipantId">参加者ID</label>
+    <input id="historyParticipantId" placeholder="すべて">
+  </div>
+  <div>
+    <label><input type="checkbox" id="historyIncludeInterrupted" checked> 中断セッションを含める</label>
+  </div>
+  <div>
+    <button id="historyDownloadButton">セッション履歴CSVをダウンロード</button>
+  </div>
+</div>
+<div id="historyMessage" class="error"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
