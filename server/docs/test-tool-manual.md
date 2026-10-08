@@ -12,7 +12,7 @@
 
 | 環境 | URL |
 |---|---|
-| 本番 | `https://uec-tst.koto.jp/tools/index.html` |
+| 本番 | `https://uec-tst.koto.jp/server/tools/index.html` |
 
 現在、このツールに認証はありません(将来的にBasic認証を掛ける予定です)。ページを開くと、絶対音感の「完了」サンプルが入力済みの状態で表示されます。
 

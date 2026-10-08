@@ -17,7 +17,7 @@
 
 | 環境 | URL |
 |---|---|
-| 本番 | `https://uec-tst.koto.jp/download/index.html` |
+| 本番 | `https://uec-tst.koto.jp/server/download/index.html` |
 
 **現在、このページに認証はありません。** URLを知っていれば、誰でも開けて、全参加者のデータをダウンロードできます。URLを関係者以外に共有しないでください。**将来的にBasic認証(ユーザー名・パスワード)を掛ける予定**です。認証を導入した際は、ページを開くときにBasic認証のダイアログが表示されるようになります。
 

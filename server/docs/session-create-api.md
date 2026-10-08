@@ -9,7 +9,7 @@
 ## 1. エンドポイント
 
 ```
-POST https://uec-tst.koto.jp/api/session_create.php?testType={testType}&participantId={participantId}
+POST https://uec-tst.koto.jp/server/api/session_create.php?testType={testType}&participantId={participantId}
 ```
 
 | 項目 | 内容 |
@@ -230,7 +230,7 @@ data/{testType}/{participantId}/{yyyyMMdd}/{AP|RP}_{participantId}_{yyyyMMddHHmm
 ## 6. リクエスト例(curl)
 
 ```bash
-curl -X POST "https://uec-tst.koto.jp/api/session_create.php?testType=absolute_pitch&participantId=P00001" \
+curl -X POST "https://uec-tst.koto.jp/server/api/session_create.php?testType=absolute_pitch&participantId=P00001" \
   -H "Content-Type: application/json" \
   -d '{
     "sessionId": "3f2504e0-4f89-4f9d-9a7f-2f1e6b6a2b11",
@@ -245,7 +245,7 @@ curl -X POST "https://uec-tst.koto.jp/api/session_create.php?testType=absolute_p
   }'
 ```
 
-動作確認用のブラウザツール(`https://uec-tst.koto.jp/tools/index.html`)を用意しています(ソースは`uec-tst`リポジトリの`server/tools/`)。現在、このツールに認証はありません(将来的にBasic認証を掛ける予定です)。サンプルJSON(完了/中断の2パターン、絶対音感・相対音感)を生成して実際に送信できるので、実装の参考にしてください。送信したデータは本番サーバに保存されるため、実際の参加者IDとは別の番号を使ってください。
+動作確認用のブラウザツール(`https://uec-tst.koto.jp/server/tools/index.html`)を用意しています(ソースは`uec-tst`リポジトリの`server/tools/`)。現在、このツールに認証はありません(将来的にBasic認証を掛ける予定です)。サンプルJSON(完了/中断の2パターン、絶対音感・相対音感)を生成して実際に送信できるので、実装の参考にしてください。送信したデータは本番サーバに保存されるため、実際の参加者IDとは別の番号を使ってください。
 
 ---
 
