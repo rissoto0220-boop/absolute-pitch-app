@@ -19,6 +19,10 @@ const bulkButton = document.getElementById("bulkDownloadButton");
 const bulkMessage = document.getElementById("bulkMessage");
 const historyButton = document.getElementById("historyDownloadButton");
 const historyMessage = document.getElementById("historyMessage");
+const deleteButton = document.getElementById("deleteButton");
+const deleteMessage = document.getElementById("deleteMessage");
+const deleteDialog = document.getElementById("deleteDialog");
+const deleteConfirmButton = document.getElementById("deleteConfirmButton");
 
 // 一括ダウンロードは、画面に表示している一覧と中身が一致するよう、最後に「一覧を取得」した
 // 時点の絞り込み条件を使う(その後に入力欄を書き換えても、再度「一覧を取得」するまで反映しない)。
@@ -149,6 +153,108 @@ async function downloadHistory() {
     historyButton.disabled = false;
   }
 }
+
+// ---- 回答詳細CSVの削除 ----
+// 手順: 条件を検証 → 該当件数を取得 → 確認ダイアログ(キャンセル/削除) → 「削除」で実行。
+// 確認ダイアログを開いたときの条件を保持し、実行時はその条件を使う(ダイアログを開いた後に
+// 入力欄を書き換えても、確認した内容と違う条件で削除されないようにする)。
+let pendingDelete = null;
+
+function isRealDate(value) {
+  if (!/^\d{8}$/.test(value)) return false;
+  const y = Number(value.slice(0, 4));
+  const m = Number(value.slice(4, 6));
+  const d = Number(value.slice(6, 8));
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+}
+
+function formatDate(value) {
+  return `${value.slice(0, 4)}/${value.slice(4, 6)}/${value.slice(6, 8)}`;
+}
+
+async function openDeleteDialog() {
+  deleteMessage.textContent = "";
+  const testType = document.getElementById("deleteTestType").value;
+  const participantId = document.getElementById("deleteParticipantId").value.trim();
+  const to = document.getElementById("deleteTo").value.trim();
+
+  if (!isRealDate(to)) {
+    deleteMessage.textContent = "日付は、実在する日付をYYYYMMDD形式で入力してください。";
+    return;
+  }
+  const params = new URLSearchParams({ to });
+  if (testType) params.set("testType", testType);
+  if (participantId) params.set("participantId", participantId);
+
+  deleteButton.disabled = true;
+  try {
+    // 該当件数を、一覧と同じ絞り込みで数える(削除の対象と一致する)。
+    const res = await fetch(`api/list_files.php?${params.toString()}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+    if (data.files.length === 0) {
+      deleteMessage.textContent = "条件に一致するファイルがないため、削除するものはありません。";
+      return;
+    }
+    pendingDelete = { params, count: data.files.length };
+    const conditions = [
+      ["テスト種別", testType ? (TEST_TYPE_LABEL[testType] ?? testType) : "すべて"],
+      ["参加者ID", participantId || "すべて"],
+      ["日付", `${formatDate(to)} 以前`],
+    ];
+    const dl = document.getElementById("deleteConditions");
+    dl.replaceChildren(...conditions.flatMap(([label, value]) => {
+      const dt = document.createElement("dt");
+      dt.textContent = label;
+      const dd = document.createElement("dd");
+      dd.textContent = value;
+      return [dt, dd];
+    }));
+    document.getElementById("deleteCount").textContent = `該当する回答詳細CSVファイル: ${data.files.length}件`;
+    deleteDialog.showModal();
+  } catch (e) {
+    deleteMessage.textContent = `削除の準備に失敗しました: ${e.message}`;
+  } finally {
+    deleteButton.disabled = false;
+  }
+}
+
+async function executeDelete() {
+  const { params } = pendingDelete;
+  deleteConfirmButton.disabled = true;
+  try {
+    const res = await fetch("api/delete_files.php", { method: "POST", body: params });
+    const data = await res.json();
+    deleteDialog.close();
+    if (!res.ok) {
+      deleteMessage.textContent = `削除に失敗しました: ${data.error ?? `HTTP ${res.status}`}`
+        + (data.deleted !== undefined ? `(${data.deleted}件は削除済み)` : "");
+    } else {
+      deleteMessage.className = "success";
+      deleteMessage.textContent = `${data.deleted}件の回答詳細CSVファイルを削除しました。`;
+    }
+    search(); // 一覧を最新にする
+  } catch (e) {
+    deleteDialog.close();
+    deleteMessage.textContent = `削除に失敗しました: ${e.message}`;
+  } finally {
+    pendingDelete = null;
+    deleteConfirmButton.disabled = false;
+  }
+}
+
+deleteButton.addEventListener("click", () => {
+  deleteMessage.className = "error";
+  openDeleteDialog();
+});
+document.getElementById("deleteCancelButton").addEventListener("click", () => {
+  pendingDelete = null;
+  deleteDialog.close();
+});
+// Escキーで閉じた場合も、削除は実行しない。
+deleteDialog.addEventListener("close", () => { pendingDelete = null; });
+deleteConfirmButton.addEventListener("click", executeDelete);
 
 bulkButton.addEventListener("click", bulkDownload);
 historyButton.addEventListener("click", downloadHistory);

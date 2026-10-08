@@ -33,3 +33,13 @@ tr:hover { background: #fafafa; }
 .empty { color: #888; padding: 1em 0; }
 .error { color: #c00; }
 button:disabled { cursor: not-allowed; opacity: 0.5; }
+.warning { color: #c00; font-weight: bold; }
+button.danger { background: #c00; color: #fff; border: 1px solid #900; }
+button.danger:disabled { background: #c00; }
+#deleteDialog { border: 2px solid #c00; border-radius: 6px; max-width: 28em; }
+#deleteDialog h3 { margin-top: 0; }
+#deleteDialog dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.3em 1em; margin: 1em 0; }
+#deleteDialog dt { font-weight: bold; }
+#deleteDialog dd { margin: 0; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 1em; margin-top: 1.5em; }
+.success { color: #167a2e; }

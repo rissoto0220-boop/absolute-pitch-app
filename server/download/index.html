@@ -60,6 +60,42 @@
 </div>
 <div id="historyMessage" class="error"></div>
 
+<h2>回答詳細CSVファイルの削除</h2>
+<p class="warning">指定した日付以前の回答詳細CSVファイルを削除します。削除したデータは元に戻せません。</p>
+<div class="filters">
+  <div>
+    <label for="deleteTestType">テスト種別</label>
+    <select id="deleteTestType">
+      <option value="">(すべて)</option>
+      <option value="absolute_pitch">絶対音感 (absolute_pitch)</option>
+      <option value="relative_pitch">相対音感 (relative_pitch)</option>
+    </select>
+  </div>
+  <div>
+    <label for="deleteParticipantId">参加者ID</label>
+    <input id="deleteParticipantId" placeholder="すべて">
+  </div>
+  <div>
+    <label for="deleteTo">日付(YYYYMMDD、この日以前を削除)</label>
+    <input id="deleteTo" placeholder="必須">
+  </div>
+  <div>
+    <button id="deleteButton" class="danger">削除</button>
+  </div>
+</div>
+<div id="deleteMessage" class="error"></div>
+
+<dialog id="deleteDialog">
+  <h3>削除してよろしいですか？</h3>
+  <dl id="deleteConditions"></dl>
+  <p id="deleteCount"></p>
+  <p class="warning">この操作は取り消せません。</p>
+  <div class="dialog-actions">
+    <button id="deleteCancelButton">キャンセル</button>
+    <button id="deleteConfirmButton" class="danger">削除</button>
+  </div>
+</dialog>
+
 <script src="app.js"></script>
 </body>
 </html>
