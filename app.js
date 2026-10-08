@@ -47,6 +47,8 @@ import {
 } from "./src/relative-pitch/session-store.js";
 import { hasCompletedSession } from "./src/relative-pitch/practice-history.js";
 import { showHistoryScreen as showRelativePitchHistoryScreen } from "./src/relative-pitch/history-screen.js";
+import { syncPendingSessions } from "./src/shared/session-uploader.js";
+import { resolveSessionEndpoint } from "./src/shared/server-config.js";
 
 const QUESTION_MS = 3000;
 const INTER_QUESTION_GAP_MS = 1000; // 問題間の間隔(仕様13.4)
@@ -56,8 +58,18 @@ let participantId = "";
 let participantData = null;
 let currentSession = null;
 
+// 確定済みでまだ送れていないセッションを、サーバーAPIへ送る(server/docs/session-create-api.md)。
+// 送信の成否で画面は止めない。失敗分は次回の呼び出し時に自動で再送される。
+function syncSessionsToServer() {
+  const endpoint = resolveSessionEndpoint(window.location);
+  if (!endpoint) return;
+  syncPendingSessions({ storage: localStorage, fetchFn: (...args) => fetch(...args), endpoint })
+    .catch(() => {});
+}
+
 function persistCurrentSession() {
   persistParticipantData(participantId, participantData, localStorage);
+  if (currentSession?.sessionStatus) syncSessionsToServer();
 }
 
 function restartApp() {
@@ -120,6 +132,7 @@ function showIdConfirm() {
     const result = startSession(participantId, { storage: localStorage });
     participantData = result.data;
     currentSession = result.session;
+    syncSessionsToServer(); // 前回の放置セッションがここでinterruptedと確定した場合に送る
     showPracticeIntro();
   });
   // 相対音感フェーズ3(音声タイムライン)の手動確認用リンク。保存とは未接続の、見た目・タイミング
@@ -151,7 +164,12 @@ function showIdConfirm() {
             // 新しいsession_idでこのセッションを開始する(仕様17.1)。
             const result = startRelativePitchSession(participantId, { storage: localStorage, testVersion, answerLayout: layout });
             const relativeSession = result.session;
-            const persistRelativeSession = () => persistRelativePitchParticipantData(participantId, result.data, localStorage);
+            syncSessionsToServer(); // 前回の放置セッションがここでinterruptedと確定した場合に送る
+            const persistRelativeSession = () => {
+              persistRelativePitchParticipantData(participantId, result.data, localStorage);
+              // 完了・音声エラーによる中断でsessionStatusが確定した直後に送る(API仕様5節)。
+              if (relativeSession.sessionStatus) syncSessionsToServer();
+            };
 
             showPracticeFlow({
               screenEl,
@@ -506,6 +524,7 @@ function showHistory() {
 function mount() {
   screenEl = document.getElementById("screen");
   showIdEntry();
+  syncSessionsToServer(); // 前回送れなかった分(オフライン・サーバー障害など)を再送する
 }
 
 if (typeof document !== "undefined") {
