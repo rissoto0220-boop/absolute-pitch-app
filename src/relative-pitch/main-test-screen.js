@@ -3,14 +3,13 @@ import { renderAnswerPanel } from "../shared/answer-panel.js";
 import { runQuestionTimeline } from "./question-timeline.js";
 import { resumeAudioContext } from "../shared/audio-buffer-player.js";
 import { toLocalIso } from "../shared/iso-time.js";
-import { ANSWER_LABELS, FULL_ANSWER_LABELS } from "./layout-comparison-screen.js";
+import { ANSWER_LABELS, FULL_ANSWER_LABELS } from "./answer-labels.js";
 import { ANSWER_BUTTON_SEMITONES, FULL_ANSWER_BUTTON_SEMITONES, isCorrectAnswer, cadenceFilenameFor } from "./intervals.js";
 import { generateTestSequence, TOTAL_QUESTIONS, generateFullTestSequence, FULL_TOTAL_QUESTIONS } from "./question-generator.js";
 import { formatAccuracyLabel } from "./scoring.js";
 import * as sessionStore from "./session-store.js";
 
 // screenEl: 描画先のDOM要素。
-// layout: フェーズ2で選んだ回答レイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
 // testVersion: "simplified"(既定)または"full"。出題順生成・回答ボタンの構成を切り替える(仕様6.2)。
 // session: このセッションの保存対象(練習と共通のセッション)。
 // persistSession: 保存を反映させるために呼ぶ関数。
@@ -18,7 +17,6 @@ import * as sessionStore from "./session-store.js";
 // onShowHistory: 結果画面から履歴・CSV出力画面へ進む際に呼ぶ。
 export function showMainTestFlow({
   screenEl,
-  layout = "circular",
   testVersion = "simplified",
   session,
   persistSession = () => {},
@@ -87,7 +85,6 @@ export function showMainTestFlow({
         renderAnswerPanel({
           container: document.getElementById("answer-panel-container"),
           labels: answerLabels,
-          layout,
           onSelect: (label, labelIndex) => {
             // 正解判定・保存には表示ラベルではなく半音差(内部コード相当)を使う(仕様10.2)。
             timeline.submitAnswer(answerButtonSemitones[labelIndex]);

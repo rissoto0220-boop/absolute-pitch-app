@@ -37,7 +37,6 @@ import { toCsv, downloadTextFile } from "./src/shared/csv.js";
 import { formatDisplayDateTime } from "./src/shared/display-format.js";
 import { showVersionSelectionScreen } from "./src/relative-pitch/version-selection-screen.js";
 import { showTestSelectionScreen } from "./src/shared/test-selection-screen.js";
-import { showLayoutComparisonScreen } from "./src/relative-pitch/layout-comparison-screen.js";
 import { showPracticeFlow } from "./src/relative-pitch/practice-screen.js";
 import { showMainTestFlow } from "./src/relative-pitch/main-test-screen.js";
 import {
@@ -178,7 +177,7 @@ function startAbsolutePitchTest() {
 
 // --- 相対音感テスト ---
 
-// 簡易版/完全版の選択→回答レイアウト選択→練習→本番。
+// 簡易版/完全版の選択→練習→本番。回答レイアウトは円環状に固定(仕様11.2、2026-10-09)。
 // 選んだtestVersionを最後まで引き回し、簡易版・完全版で問題セット・回答ボタンを切り替える(仕様6.2)。
 // セッションは練習・本番を通じて1つを使い回す(仕様17〜19章。絶対音感と同じ考え方)。
 function startRelativePitchTest() {
@@ -186,50 +185,41 @@ function startRelativePitchTest() {
     screenEl,
     onBack: showTestSelection,
     onSelect: (testVersion) => {
-      showLayoutComparisonScreen({
+      // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
+      // (これから始めるセッション自体は完了済みに含めない)。簡易版・完全版は別々に判定する。
+      const existingData = loadRelativePitchParticipantData(participantId, localStorage);
+      const hasCompletedBefore = hasCompletedSession(existingData.sessions, testVersion);
+
+      // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
+      // 新しいsession_idでこのセッションを開始する(仕様17.1)。
+      const result = startRelativePitchSession(participantId, { storage: localStorage, testVersion });
+      const relativeSession = result.session;
+      syncSessionsToServer(); // 前回の放置セッションがここでinterruptedと確定した場合に送る
+      const persistRelativeSession = () => {
+        persistRelativePitchParticipantData(participantId, result.data, localStorage);
+        // 完了・音声エラーによる中断でsessionStatusが確定した直後に送る(API仕様5節)。
+        if (relativeSession.sessionStatus) syncSessionsToServer();
+      };
+
+      showPracticeFlow({
         screenEl,
         testVersion,
-        onBack: showTestSelection,
-        onConfirm: (layout) => {
-          // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
-          // (これから始めるセッション自体は完了済みに含めない)。簡易版・完全版は別々に判定する。
-          const existingData = loadRelativePitchParticipantData(participantId, localStorage);
-          const hasCompletedBefore = hasCompletedSession(existingData.sessions, testVersion);
-
-          // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
-          // 新しいsession_idでこのセッションを開始する(仕様17.1)。
-          const result = startRelativePitchSession(participantId, { storage: localStorage, testVersion, answerLayout: layout });
-          const relativeSession = result.session;
-          syncSessionsToServer(); // 前回の放置セッションがここでinterruptedと確定した場合に送る
-          const persistRelativeSession = () => {
-            persistRelativePitchParticipantData(participantId, result.data, localStorage);
-            // 完了・音声エラーによる中断でsessionStatusが確定した直後に送る(API仕様5節)。
-            if (relativeSession.sessionStatus) syncSessionsToServer();
-          };
-
-          showPracticeFlow({
+        hasCompletedBefore,
+        session: relativeSession,
+        persistSession: persistRelativeSession,
+        onFinished: () => {
+          showMainTestFlow({
             screenEl,
-            layout,
             testVersion,
-            hasCompletedBefore,
             session: relativeSession,
             persistSession: persistRelativeSession,
-            onFinished: () => {
-              showMainTestFlow({
+            onBack: showTestSelection,
+            onShowHistory: () => {
+              showRelativePitchHistoryScreen({
                 screenEl,
-                layout,
-                testVersion,
-                session: relativeSession,
-                persistSession: persistRelativeSession,
+                participantId,
+                participantData: result.data,
                 onBack: showTestSelection,
-                onShowHistory: () => {
-                  showRelativePitchHistoryScreen({
-                    screenEl,
-                    participantId,
-                    participantData: result.data,
-                    onBack: showTestSelection,
-                  });
-                },
               });
             },
           });

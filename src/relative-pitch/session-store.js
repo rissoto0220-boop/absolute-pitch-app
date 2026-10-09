@@ -7,6 +7,8 @@ import { toLocalIso } from "../shared/iso-time.js";
 
 const SCHEMA_VERSION = 1;
 const TEST_TYPE = "relative_pitch";
+// 回答レイアウトは円環状に固定(仕様11.2、2026-10-09)。answer_layoutの項目は、固定値として保存し続ける。
+const ANSWER_LAYOUT = "circular";
 
 function storageKeyFor(participantId) {
   return `relative-pitch:${participantId}`;
@@ -48,11 +50,9 @@ function reconcileDanglingSessions(data, now) {
 }
 
 // options.testVersion: "simplified"(既定)または"full"(仕様6.2・18.3)。
-// options.answerLayout: フェーズ2で選んだレイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
 export function startSession(participantId, {
   storage,
   testVersion = "simplified",
-  answerLayout = "",
   now = () => toLocalIso(),
   generateId = () => crypto.randomUUID(),
 }) {
@@ -66,7 +66,7 @@ export function startSession(participantId, {
     startedAt: now(),
     endedAt: "",
     sessionStatus: null, // completed/interrupted が決まるまではnull(簡易版に強制終了はない、仕様15.1)
-    answerLayout,
+    answerLayout: ANSWER_LAYOUT,
     practiceStatus: null, // completed/skipped/interrupted(仕様13.4)
     generatedQuestionOrder: [], // 本番12問の半音差の出題順(仕様18.2)
     currentQuestion: null,

@@ -1,7 +1,7 @@
 // 相対音感 簡易版/完全版 選択画面(仕様 relative-pitch-test-spec.md §5.1・§6章)。
 // 参加者が相対音感テストに進んだ直後に、どちらのバージョンを受けるかを選ぶ画面。
 // この段階では音声再生・保存とはまだ接続しない。選んだtestVersion("simplified"または"full")を
-// onSelectへ渡すだけ(layout-comparison-screen.jsのonConfirm(layout)と同じパターン)。
+// onSelectへ渡すだけ。
 export function showVersionSelectionScreen({ screenEl, onSelect, onBack }) {
   screenEl.innerHTML = `
     <div class="panel">

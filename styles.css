@@ -253,17 +253,13 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
   .test-description { margin-left: 60px; }
 }
 
-/* 相対音感の回答レイアウト比較用(仕様 relative-pitch-test-spec.md §11.2)。
+/* 相対音感の回答ボタン(仕様 relative-pitch-test-spec.md §11.2)。円環状に固定(2026-10-09)。
    絶対音感の.answer-grid/.answerとは名前を分け、混同・影響が起きないようにする。
-   2026-09-18: 比較候補をcircular・spiral・dual_ringの3つに入れ替え(gridは削除)。
    案内文(.status)と円環外側のボタンが重ならないよう、上余白を広げてある。 */
 .answer-panel { position: relative; margin: 90px auto 8px; }
 
-.answer-panel--circular,
-.answer-panel--spiral,
-.answer-panel--dual_ring {
-  /* .answer-gridと同じ理由(上記コメント参照)でvwのままにする。
-     3候補で同じ余白・ボタンサイズにし、配置(位置計算)だけの違いで比較できるようにする。 */
+.answer-panel--circular {
+  /* .answer-gridと同じ理由(上記コメント参照)でvwのままにする。 */
   --wheel-size: min(70vw, 430px);
   --button-size: clamp(56px, 11vw, 76px);
   width: var(--wheel-size);
@@ -290,40 +286,13 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
    --iはこの2つについてそれぞれ12・13になるが、rotate(360deg)・rotate(390deg)は
    360度周期性によりrotate(0deg)・rotate(30deg)と同じ位置になるため、対応する音名
    (ド・ド#)と自動的に同じ角度になる。半径(translateY)だけ通常より大きくし、
-   ガイドリング等の装飾は付けない(dual_ringとの違い)。 */
+   ガイドリング等の装飾は付けない。 */
 .answer-panel--circular .answer-panel__button--extra {
   transform:
     translate(-50%, -50%)
     rotate(calc(var(--i) * 30deg))
     translateY(calc(var(--wheel-size) * -0.62))
     rotate(calc(var(--i) * -30deg));
-}
-
-/* spiral(渦巻配置)・dual_ring(二重円環)は、半径が半音差ごとに連続的に変わったり、
-   単純な円に収まらなかったりするため、位置をJS(circular-answer-layout.js)で計算し、
-   ボタンのstyle属性へ直接left/top(%)を指定する。CSS側は絶対配置の土台だけを用意する
-   (--wheel-size・--button-sizeはcircularと共通のため、上のルールで指定済み)。 */
-.answer-panel--spiral .answer-panel__button,
-.answer-panel--dual_ring .answer-panel__button {
-  position: absolute;
-  width: var(--button-size);
-  height: var(--button-size);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-.answer-panel__guide {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-.answer-panel__guide path {
-  fill: none;
-  stroke: #e6dcc6;
-  stroke-width: 10;
-  stroke-linecap: round;
 }
 
 .answer-panel__button {
@@ -336,7 +305,7 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
   background: white;
   color: var(--ink);
   /* 文字サイズをボタンサイズに連動させる(2026-09-18: スマホで文字盤が2行に折り返される
-     問題への対応)。--button-sizeはcircular/spiral/dual_ringで共有・レスポンシブなので、
+     問題への対応)。--button-sizeはレスポンシブなので、
      ボタンが小さくなれば文字サイズも自動的に追従する。 */
   font-size: calc(var(--button-size) * 0.22);
   font-weight: 700;
@@ -369,9 +338,7 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
 }
 
 @media (max-width: 650px) {
-  .answer-panel--circular,
-  .answer-panel--spiral,
-  .answer-panel--dual_ring { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
+  .answer-panel--circular { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
   /* .answer-panel__buttonの文字サイズはcalc(var(--button-size) * 0.22)で連動するため、
      ここでの上書きは不要(--button-size自体がこのブレークポイントで小さくなる)。 */
 }

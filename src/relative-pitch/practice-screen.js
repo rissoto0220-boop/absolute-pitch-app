@@ -3,7 +3,7 @@ import { renderAnswerPanel } from "../shared/answer-panel.js";
 import { runQuestionTimeline } from "./question-timeline.js";
 import { resumeAudioContext } from "../shared/audio-buffer-player.js";
 import { toLocalIso } from "../shared/iso-time.js";
-import { ANSWER_LABELS, FULL_ANSWER_LABELS } from "./layout-comparison-screen.js";
+import { ANSWER_LABELS, FULL_ANSWER_LABELS } from "./answer-labels.js";
 import {
   PRACTICE_QUESTIONS,
   ANSWER_BUTTON_SEMITONES,
@@ -14,7 +14,6 @@ import {
 import * as sessionStore from "./session-store.js";
 
 // screenEl: 描画先のDOM要素。
-// layout: フェーズ2で選んだ回答レイアウト("circular"・"spiral"・"dual_ring"のいずれか)。
 // testVersion: "simplified"(既定)または"full"。回答ボタンの構成を切り替える(仕様6.2)。
 //   練習問題自体は簡易版・完全版で共通(PRACTICE_QUESTIONS、2026-09-18更新)。
 // hasCompletedBefore: 完了済みの相対音感履歴があるか(同じtestVersionでの判定、仕様13.4)。
@@ -23,7 +22,6 @@ import * as sessionStore from "./session-store.js";
 // onFinished: 練習が終わった時点(全問終えた、またはスキップした)で呼ぶ。
 export function showPracticeFlow({
   screenEl,
-  layout = "circular",
   testVersion = "simplified",
   hasCompletedBefore = false,
   session,
@@ -128,7 +126,6 @@ export function showPracticeFlow({
         renderAnswerPanel({
           container: document.getElementById("answer-panel-container"),
           labels: answerLabels,
-          layout,
           onSelect: (label, labelIndex) => {
             // 正解判定・保存には表示ラベルではなく半音差(内部コード相当)を使う(仕様10.2)。
             timeline.submitAnswer(answerButtonSemitones[labelIndex]);
