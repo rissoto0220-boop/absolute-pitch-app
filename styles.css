@@ -42,6 +42,15 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
 .history-list li { padding: 10px 0; border-bottom: 1px solid #dfe6f0; }
 .history-list li:last-child { border-bottom: none; }
 
+/* テスト選択画面 */
+.test-list { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 14px; }
+.test-button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 60px; padding: 16px 20px; border: 2px solid #c5cfde; border-radius: 14px; background: white; color: #172033; font-weight: 800; font-size: 1.1rem; text-align: left; }
+.test-button:hover:not(:disabled), .test-button:focus-visible:not(:disabled) { border-color: #2258c7; background: #eef4ff; }
+.test-button:disabled { cursor: default; background: #f4f7fb; color: #8a95a8; }
+.test-badge { flex: none; font-size: .8rem; font-weight: 700; color: #536179; background: #e9eef6; border-radius: 999px; padding: 4px 12px; }
+.test-description { margin: 6px 4px 0; color: #637087; font-size: .92rem; }
+.is-unavailable .test-description { color: #8a95a8; }
+
 /* --wheel-sizeは、widthだけでなく.answerのtransform(translateY)内でも使われている。
    transformの中の%は「そのボタン自身のサイズ」に対する割合として解釈されてしまうため、
    ここに%を使う値(例: 100%)を入れると円環が極端に縮む(手動確認で発見、2026-08-30)。

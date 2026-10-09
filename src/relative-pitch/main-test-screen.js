@@ -124,7 +124,7 @@ export function showMainTestFlow({
         <div class="score">${correctCount} / ${totalQuestions}</div>
         <div class="actions centered">
           <button id="history" class="secondary">履歴・CSVを見る</button>
-          <button id="back" class="primary">戻る</button>
+          <button id="back" class="primary">テスト選択へ戻る</button>
         </div>
       </div>`;
     document.getElementById("history").addEventListener("click", onShowHistory);

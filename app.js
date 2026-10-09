@@ -36,8 +36,8 @@ import {
 import { toCsv, downloadTextFile } from "./src/shared/csv.js";
 import { formatDisplayDateTime } from "./src/shared/display-format.js";
 import { showVersionSelectionScreen } from "./src/relative-pitch/version-selection-screen.js";
+import { showTestSelectionScreen } from "./src/shared/test-selection-screen.js";
 import { showLayoutComparisonScreen } from "./src/relative-pitch/layout-comparison-screen.js";
-import { showQuestionTimelineDemoScreen } from "./src/relative-pitch/question-timeline-demo-screen.js";
 import { showPracticeFlow } from "./src/relative-pitch/practice-screen.js";
 import { showMainTestFlow } from "./src/relative-pitch/main-test-screen.js";
 import {
@@ -122,85 +122,120 @@ function showIdConfirm() {
         <button id="edit" class="secondary">修正する</button>
         <button id="accept" class="primary">このIDで進む</button>
       </div>
-      <p class="note"><a href="#" id="dev-relative-pitch-timeline">(開発中の確認用)相対音感の音声タイムラインだけを見る(保存なし)</a></p>
-      <p class="note"><a href="#" id="dev-relative-pitch-full">(開発中の確認用)相対音感テストを試す(保存あり)</a></p>
     </div>`;
   document.getElementById("edit").addEventListener("click", () => showIdEntry(participantId));
-  document.getElementById("accept").addEventListener("click", () => {
-    // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
-    // 新しいsession_idでこのセッションを開始する(仕様6.2・19章)。
-    const result = startSession(participantId, { storage: localStorage });
-    participantData = result.data;
-    currentSession = result.session;
-    syncSessionsToServer(); // 前回の放置セッションがここでinterruptedと確定した場合に送る
-    showPracticeIntro();
-  });
-  // 相対音感フェーズ3(音声タイムライン)の手動確認用リンク。保存とは未接続の、見た目・タイミング
-  // だけの確認用(将来のテスト選択画面で置き換える予定)。
-  document.getElementById("dev-relative-pitch-timeline").addEventListener("click", (e) => {
-    e.preventDefault();
-    showQuestionTimelineDemoScreen({ screenEl, onBack: () => showIdConfirm() });
-  });
-  // 相対音感フェーズ6: 簡易版/完全版の選択→回答レイアウト選択→練習→本番。
-  // 選んだtestVersionを最後まで引き回し、簡易版・完全版で問題セット・回答ボタンを切り替える(仕様6.2)。
-  // セッションは練習・本番を通じて1つを使い回す(仕様17〜19章。絶対音感と同じ考え方)。
-  document.getElementById("dev-relative-pitch-full").addEventListener("click", (e) => {
-    e.preventDefault();
-    showVersionSelectionScreen({
-      screenEl,
-      onBack: () => showIdConfirm(),
-      onSelect: (testVersion) => {
-        showLayoutComparisonScreen({
-          screenEl,
-          testVersion,
-          onBack: () => showIdConfirm(),
-          onConfirm: (layout) => {
-            // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
-            // (これから始めるセッション自体は完了済みに含めない)。簡易版・完全版は別々に判定する。
-            const existingData = loadRelativePitchParticipantData(participantId, localStorage);
-            const hasCompletedBefore = hasCompletedSession(existingData.sessions, testVersion);
+  document.getElementById("accept").addEventListener("click", showTestSelection);
+}
 
-            // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
-            // 新しいsession_idでこのセッションを開始する(仕様17.1)。
-            const result = startRelativePitchSession(participantId, { storage: localStorage, testVersion, answerLayout: layout });
-            const relativeSession = result.session;
-            syncSessionsToServer(); // 前回の放置セッションがここでinterruptedと確定した場合に送る
-            const persistRelativeSession = () => {
-              persistRelativePitchParticipantData(participantId, result.data, localStorage);
-              // 完了・音声エラーによる中断でsessionStatusが確定した直後に送る(API仕様5節)。
-              if (relativeSession.sessionStatus) syncSessionsToServer();
-            };
+// --- テスト選択 ---
 
-            showPracticeFlow({
-              screenEl,
-              layout,
-              testVersion,
-              hasCompletedBefore,
-              session: relativeSession,
-              persistSession: persistRelativeSession,
-              onFinished: () => {
-                showMainTestFlow({
-                  screenEl,
-                  layout,
-                  testVersion,
-                  session: relativeSession,
-                  persistSession: persistRelativeSession,
-                  onBack: () => showIdConfirm(),
-                  onShowHistory: () => {
-                    showRelativePitchHistoryScreen({
-                      screenEl,
-                      participantId,
-                      participantData: result.data,
-                      onBack: () => showIdConfirm(),
-                    });
-                  },
-                });
-              },
-            });
-          },
-        });
-      },
-    });
+// テスト選択画面に並べるテストの一覧。テストを追加するときはここに1件足す。
+function availableTests() {
+  return [
+    {
+      id: "absolute-pitch",
+      title: "絶対音感テスト",
+      description: "鳴った音の音名を答えるテストです(練習3問・本番最大60問)。",
+      available: true,
+      onStart: startAbsolutePitchTest,
+    },
+    {
+      id: "relative-pitch",
+      title: "相対音感テスト",
+      description: "基準の音から聞いて、目的の音の階名を答えるテストです(簡易版12問・完全版44問)。",
+      available: true,
+      onStart: startRelativePitchTest,
+    },
+    {
+      id: "functional-pitch",
+      title: "機能的音感テスト",
+      description: "現在準備中です。",
+      available: false,
+    },
+  ];
+}
+
+function showTestSelection() {
+  showTestSelectionScreen({
+    screenEl,
+    participantId,
+    tests: availableTests(),
+    onChangeParticipant: restartApp,
+  });
+}
+
+// --- 絶対音感テスト ---
+
+function startAbsolutePitchTest() {
+  // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
+  // 新しいsession_idでこのセッションを開始する(仕様6.2・19章)。
+  const result = startSession(participantId, { storage: localStorage });
+  participantData = result.data;
+  currentSession = result.session;
+  syncSessionsToServer(); // 前回の放置セッションがここでinterruptedと確定した場合に送る
+  showPracticeIntro();
+}
+
+// --- 相対音感テスト ---
+
+// 簡易版/完全版の選択→回答レイアウト選択→練習→本番。
+// 選んだtestVersionを最後まで引き回し、簡易版・完全版で問題セット・回答ボタンを切り替える(仕様6.2)。
+// セッションは練習・本番を通じて1つを使い回す(仕様17〜19章。絶対音感と同じ考え方)。
+function startRelativePitchTest() {
+  showVersionSelectionScreen({
+    screenEl,
+    onBack: showTestSelection,
+    onSelect: (testVersion) => {
+      showLayoutComparisonScreen({
+        screenEl,
+        testVersion,
+        onBack: showTestSelection,
+        onConfirm: (layout) => {
+          // 練習の要否判定(仕様13.4)は、セッション開始前の保存済みデータで行う
+          // (これから始めるセッション自体は完了済みに含めない)。簡易版・完全版は別々に判定する。
+          const existingData = loadRelativePitchParticipantData(participantId, localStorage);
+          const hasCompletedBefore = hasCompletedSession(existingData.sessions, testVersion);
+
+          // 前回、完了しきれなかったセッションがあればここでinterruptedとして確定し、
+          // 新しいsession_idでこのセッションを開始する(仕様17.1)。
+          const result = startRelativePitchSession(participantId, { storage: localStorage, testVersion, answerLayout: layout });
+          const relativeSession = result.session;
+          syncSessionsToServer(); // 前回の放置セッションがここでinterruptedと確定した場合に送る
+          const persistRelativeSession = () => {
+            persistRelativePitchParticipantData(participantId, result.data, localStorage);
+            // 完了・音声エラーによる中断でsessionStatusが確定した直後に送る(API仕様5節)。
+            if (relativeSession.sessionStatus) syncSessionsToServer();
+          };
+
+          showPracticeFlow({
+            screenEl,
+            layout,
+            testVersion,
+            hasCompletedBefore,
+            session: relativeSession,
+            persistSession: persistRelativeSession,
+            onFinished: () => {
+              showMainTestFlow({
+                screenEl,
+                layout,
+                testVersion,
+                session: relativeSession,
+                persistSession: persistRelativeSession,
+                onBack: showTestSelection,
+                onShowHistory: () => {
+                  showRelativePitchHistoryScreen({
+                    screenEl,
+                    participantId,
+                    participantData: result.data,
+                    onBack: showTestSelection,
+                  });
+                },
+              });
+            },
+          });
+        },
+      });
+    },
   });
 }
 
@@ -358,11 +393,11 @@ function showPlaybackError(note) {
       <p>問題の音声ファイル(${escapeHtml(note.filename)})の再生に失敗しました。</p>
       <p class="note">
         この問題は誤回答やタイムアウトとしては記録されません。<br>
-        お手数ですが、最初からやり直してください。
+        お手数ですが、テスト選択からやり直してください。
       </p>
-      <div class="actions centered"><button id="restart" class="primary">最初からやり直す</button></div>
+      <div class="actions centered"><button id="to-selection" class="primary">テスト選択へ戻る</button></div>
     </div>`;
-  document.getElementById("restart").addEventListener("click", restartApp);
+  document.getElementById("to-selection").addEventListener("click", showTestSelection);
 }
 
 // --- 本番開始確認(仕様10章) ---
@@ -462,11 +497,11 @@ function showResult(correctCount) {
       <div class="score">${correctCount} / ${TOTAL_QUESTIONS}</div>
       <div class="actions centered">
         <button id="history" class="secondary">履歴・CSVを見る</button>
-        <button id="restart" class="primary">最初からやり直す</button>
+        <button id="to-selection" class="primary">テスト選択へ戻る</button>
       </div>
     </div>`;
   document.getElementById("history").addEventListener("click", showHistory);
-  document.getElementById("restart").addEventListener("click", restartApp);
+  document.getElementById("to-selection").addEventListener("click", showTestSelection);
 }
 
 // --- 履歴・CSV出力(仕様20〜22章) ---
@@ -497,7 +532,7 @@ function showHistory() {
           <button id="download-responses" class="secondary">回答詳細CSVをダウンロード</button>
           <button id="download-sessions" class="secondary">テスト履歴CSVをダウンロード</button>
         </div>
-        <div class="actions"><button id="restart" class="primary">最初からやり直す</button></div>
+        <div class="actions"><button id="to-selection" class="primary">テスト選択へ戻る</button></div>
       </div>`;
 
     document.getElementById("toggle-list-interrupted").addEventListener("change", (e) => {
@@ -515,7 +550,7 @@ function showHistory() {
       const rows = buildSessionHistoryRows(participantId, participantData.sessions, includeInterruptedInCsv);
       downloadTextFile(buildCsvFilename(participantId, "sessions"), toCsv(SESSION_HISTORY_HEADERS, rows));
     });
-    document.getElementById("restart").addEventListener("click", restartApp);
+    document.getElementById("to-selection").addEventListener("click", showTestSelection);
   }
 
   render();

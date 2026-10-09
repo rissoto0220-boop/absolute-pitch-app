@@ -52,7 +52,7 @@ export function showHistoryScreen({ screenEl, participantId, participantData, on
           <button id="download-responses" class="secondary">回答詳細CSVをダウンロード</button>
           <button id="download-sessions" class="secondary">テスト履歴CSVをダウンロード</button>
         </div>
-        <div class="actions"><button id="back" class="primary">戻る</button></div>
+        <div class="actions"><button id="back" class="primary">テスト選択へ戻る</button></div>
       </div>`;
 
     document.getElementById("toggle-list-interrupted").addEventListener("change", (e) => {
