@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ANSWER_LABELS, FULL_ANSWER_LABELS } from "../../src/relative-pitch/layout-comparison-screen.js";
+import { ANSWER_LABELS, FULL_ANSWER_LABELS } from "../../src/relative-pitch/answer-labels.js";
 
 test("ANSWER_LABELSは、仕様11.1の12種類に「ド」「高いド」を加えた14種類(2026-09-18更新)", () => {
   assert.deepEqual(ANSWER_LABELS.map((l) => l.text), [
@@ -33,14 +33,10 @@ test("FULL_ANSWER_LABELS: オクターブ重複ボタンが無いため、extra�
   assert.deepEqual(FULL_ANSWER_LABELS.map((l) => l.extra), FULL_ANSWER_LABELS.map(() => false));
 });
 
-// renderAnswerPanel/showLayoutComparisonScreenはDOM(document)を直接書き換えるため、
+// renderAnswerPanelはDOM(document)を直接書き換えるため、
 // app.js(tests/app.test.js参照)と同じ理由でNode環境からのテストには向かない。
 // ここでは、documentが存在しない環境(Node)でimportしても例外にならないことだけを確認し、
-// 実際のボタン描画・クリック時の色変化・レイアウト切り替えは手動でのブラウザ確認で検証する。
-test("document が無い環境でも layout-comparison-screen.js のimportで例外にならない", async () => {
-  await assert.doesNotReject(import("../../src/relative-pitch/layout-comparison-screen.js"));
-});
-
+// 実際のボタン描画・クリック時の色変化は手動でのブラウザ確認で検証する。
 test("document が無い環境でも answer-panel.js のimportで例外にならない", async () => {
   await assert.doesNotReject(import("../../src/shared/answer-panel.js"));
 });

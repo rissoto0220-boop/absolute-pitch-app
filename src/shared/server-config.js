@@ -1,9 +1,8 @@
 // テスト結果の送信先サーバーの設定(server/docs/session-create-api.md)。
 // 配信元が変わっても、送信先URLの変更はここ1か所で済むようにしておく。
 
-// 仕様書(server/docs/session-create-api.md)では /api/ だが、現在の本番サーバーはリポジトリを
-// 丸ごと配置しているため、APIは /server/api/ にある。サーバー側の配置を仕様書どおりに変えた場合は
-// ここを /api/ に戻すこと。
+// 本番サーバーはリポジトリを丸ごと配置しているため、APIは /server/api/ にある
+// (server/docs/session-create-api.md の記載どおり)。
 export const SESSION_CREATE_ENDPOINT = "https://uec-tst.koto.jp/server/api/session_create.php";
 
 // 手元でアプリとサーバー(server/)を同じ php -S で配信して確認するときの送信先(同一オリジンの相対パス)。

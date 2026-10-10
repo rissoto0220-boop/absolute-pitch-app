@@ -1,46 +1,193 @@
+/* 配色はOkabe-Ito(色覚の多様性に配慮したパレット)を基準にしている:
+     青 #0072B2 / オレンジ #E69F00 / 濃い朱 #B54A00
+   色だけで意味を伝えない(選択中=✓印、エラー=!印、準備中=点線と文字)。
+   紫と青、水色とピンクのように、色覚によって区別しにくい組み合わせは使わない。 */
 :root {
   color-scheme: light;
+  --bg: #faf7f0;
+  --paper: #ffffff;
+  --ink: #1f2933;
+  --muted: #5b6770;
+  --line: #d8d2c4;
+  --line-strong: #52606d;
+  --blue: #0072B2;
+  --blue-deep: #005a8c;
+  --orange: #E69F00;
+  --error: #B54A00;
+  --cream: #fff8e6;
+  --sand: #f3ede0;
+  --radius: 8px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #eef2f7;
-  color: #172033;
+  color: var(--ink);
+  background: var(--bg);
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; }
+body { margin: 0; min-height: 100vh; background: var(--bg); }
 button { font: inherit; cursor: pointer; }
-.app-shell { width: min(720px, calc(100% - 32px)); margin: 32px auto; }
-.app-header { margin-bottom: 16px; }
-h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.2rem); }
-.screen { min-height: 400px; background: white; border-radius: 24px; padding: clamp(24px, 5vw, 40px); box-shadow: 0 18px 50px rgba(35,50,79,.12); }
-.panel { max-width: 600px; margin: 0 auto; }
-.center { text-align: center; }
-h2 { margin-top: 0; }
-p { line-height: 1.7; }
-.note { color: #637087; font-size: .92rem; }
-.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
-.primary, .secondary { border: 0; border-radius: 12px; padding: 14px 22px; font-weight: 800; min-height: 52px; }
-.primary { background: #2258c7; color: white; }
-.primary:hover { background: #1745a3; }
-.secondary { background: #e9eef6; color: #172033; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
-.field { margin: 24px 0; }
-label { display: block; font-weight: 700; margin-bottom: 8px; }
-.field input { width: 100%; padding: 15px 16px; border: 2px solid #c5cfde; border-radius: 12px; font-size: 1.15rem; text-transform: uppercase; font: inherit; }
-.field input:focus { outline: 3px solid #9ec1ff; border-color: #356ad8; }
-.error { color: #b42318; font-weight: 700; min-height: 1.5em; }
-.id-card { font-size: 2rem; font-weight: 800; letter-spacing: .08em; padding: 24px; background: #f4f7fb; border-radius: 16px; text-align: center; }
-.instructions { margin: 20px 0; padding-left: 1.4em; line-height: 1.9; }
-.notice { background: #f4f7fb; border-left: 5px solid #356ad8; padding: 14px 16px; border-radius: 10px; margin-bottom: 16px; }
-.status { min-height: 42px; text-align: center; font-weight: 700; color: #536179; }
-.status.error { color: #b42318; }
-.score { font-size: clamp(3rem, 10vw, 6rem); margin: 25px 0; font-weight: 900; color: #2258c7; }
+.app-shell { width: min(720px, calc(100% - 32px)); margin: 32px auto; }
+.app-header { margin-bottom: 18px; }
+h1 {
+  margin: 0;
+  padding-top: 14px;
+  position: relative;
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+/* タイトル上の飾り線(青の長い線+オレンジの短い線) */
+h1::before { content: ""; position: absolute; top: 0; left: 0; width: 72px; height: 5px; background: linear-gradient(to right, var(--blue) 0 75%, var(--orange) 75% 100%); }
+
+.screen {
+  min-height: 400px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: clamp(24px, 5vw, 44px);
+}
+.panel { max-width: 600px; margin: 0 auto; animation: fade .25s ease both; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.center { text-align: center; }
+h2 { margin-top: 0; font-size: 1.45rem; font-weight: 700; }
+p { line-height: 1.8; }
+.note { color: var(--muted); font-size: .92rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .actions.centered { justify-content: center; }
 
-.checkbox { display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 16px 0; }
-.checkbox input { width: 18px; height: 18px; padding: 0; border: 2px solid #c5cfde; border-radius: 4px; }
-.checkbox input:focus { outline: 3px solid #9ec1ff; }
-.history-list { list-style: none; margin: 16px 0; padding: 4px 14px; background: #f4f7fb; border-radius: 10px; }
-.history-list li { padding: 10px 0; border-bottom: 1px solid #dfe6f0; }
-.history-list li:last-child { border-bottom: none; }
+/* ボタン */
+.primary, .secondary {
+  border-radius: var(--radius);
+  padding: 14px 26px;
+  font-weight: 700;
+  min-height: 54px;
+  border: 2px solid var(--blue);
+  transition: background-color .12s ease, color .12s ease;
+}
+.primary { background: var(--blue); color: white; }
+.primary:hover:not(:disabled) { background: var(--blue-deep); border-color: var(--blue-deep); }
+.secondary { background: white; color: var(--blue-deep); }
+.secondary:hover:not(:disabled) { background: #eef6fb; }
+.primary:disabled, .secondary:disabled { background: #eceae4; border-color: #c9c5bb; color: #7b8794; cursor: default; }
+.primary:focus-visible, .secondary:focus-visible { outline-offset: 3px; box-shadow: 0 0 0 3px white; }
+
+/* ID入力 */
+.field { margin: 24px 0; }
+label { display: block; font-weight: 700; margin-bottom: 8px; }
+.field input {
+  width: 100%;
+  padding: 15px 18px;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: white;
+  font: inherit;
+  font-size: 1.2rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue); }
+.error { color: var(--error); font-weight: 700; min-height: 1.5em; }
+/* エラーは色だけに頼らず、先頭に「!」の丸印を付ける */
+.error:not(:empty)::before { content: "! "; display: inline-block; width: 1.3em; height: 1.3em; margin-right: .3em; line-height: 1.3em; text-align: center; border-radius: 50%; background: var(--error); color: white; }
+.id-card {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  padding: 24px;
+  background: var(--bg);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+/* 説明・案内 */
+.instructions { list-style: none; margin: 20px 0; padding: 0; }
+.instructions li { position: relative; padding: 12px 8px 12px 28px; border-bottom: 1px solid var(--line); line-height: 1.6; }
+.instructions li:first-child { border-top: 1px solid var(--line); }
+.instructions li::before { content: ""; position: absolute; left: 6px; top: 1.15em; width: 9px; height: 9px; background: var(--blue); }
+.notice {
+  position: relative;
+  background: var(--cream);
+  padding: 14px 18px 14px 52px;
+  border-left: 6px solid var(--blue);
+  margin-bottom: 16px;
+}
+.notice::before {
+  content: "i";
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  font-weight: 700;
+  font-style: italic;
+}
+.status { min-height: 42px; text-align: center; font-weight: 700; color: var(--ink); }
+.status.error { color: var(--error); }
+.score { font-size: clamp(3.2rem, 11vw, 6.2rem); margin: 18px 0 8px; font-weight: 700; line-height: 1.2; color: var(--blue); }
+
+/* 履歴(カードにせず、区切り線で並べる) */
+.checkbox { display: flex; align-items: center; gap: 10px; font-weight: 400; margin: 16px 0; }
+.checkbox input { width: 22px; height: 22px; accent-color: var(--blue); }
+.history-list { list-style: none; margin: 16px 0; padding: 0; border-top: 2px solid var(--ink); }
+.history-list li { padding: 12px 6px; border-bottom: 1px solid var(--line); }
+
+/* テスト選択画面(目次リスト):枠・影なし、区切り線と大きな番号で並べる。
+   HTMLは変えず、番号はCSSカウンター(counter)で付ける。
+   左端の縦線は絶対音感=青・相対音感=オレンジだが、番号と文字でも区別できるので色は補助。 */
+.test-list { list-style: none; margin: 22px 0 0; padding: 0; border-top: 2px solid var(--ink); counter-reset: test; }
+.test-item {
+  --accent: var(--blue);
+  counter-increment: test;
+  border-bottom: 1px solid var(--line);
+  border-left: 6px solid var(--accent);
+  padding: 4px 0 16px;
+  transition: background-color .12s ease;
+}
+.test-item:has(#test-relative-pitch) { --accent: var(--orange); }
+.test-item:hover:not(.is-unavailable) { background: var(--cream); }
+.test-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 14px 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 1.2rem;
+  text-align: left;
+}
+.test-button::before {
+  content: counter(test, decimal-leading-zero);
+  flex: none;
+  width: 72px;
+  padding-left: 14px;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--blue);
+}
+.test-title { flex: 1; min-width: 0; }
+.test-button:not(:disabled)::after {
+  content: "→";
+  flex: none;
+  font-size: 1.5rem;
+  color: var(--blue);
+  transition: translate .12s ease;
+}
+.test-item:hover:not(.is-unavailable) .test-button::after { translate: 6px 0; }
+.test-button:disabled { cursor: default; color: #7b8794; }
+.test-button:disabled::before { color: #a8b0b9; }
+.test-badge { flex: none; font-size: .8rem; font-weight: 700; color: var(--muted); border: 1.5px solid var(--muted); border-radius: 999px; padding: 2px 12px; }
+.test-description { margin: 0 14px 0 72px; color: var(--muted); font-size: .93rem; line-height: 1.7; }
+/* 準備中:点線の縦線+灰色の文字+「準備中」ラベル(色だけに頼らない) */
+.is-unavailable { --accent: #c9c5bb; border-left-style: dashed; }
 
 /* --wheel-sizeは、widthだけでなく.answerのtransform(translateY)内でも使われている。
    transformの中の%は「そのボタン自身のサイズ」に対する割合として解釈されてしまうため、
@@ -54,7 +201,7 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
   height: var(--wheel-size);
   margin: 26px auto 8px;
   border-radius: 50%;
-  background: radial-gradient(circle, #f8fbff 0 42%, #eef4ff 43% 66%, transparent 67%);
+  background: radial-gradient(circle, white 0 40%, var(--sand) 41% 64%, #e6dcc6 65% 66%, transparent 67%);
 }
 .answer {
   position: absolute;
@@ -67,16 +214,34 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
     rotate(calc(var(--i) * 30deg))
     translateY(calc(var(--wheel-size) * -0.40))
     rotate(calc(var(--i) * -30deg));
-  border: 2px solid #b8c5d8;
+  border: 2px solid var(--line-strong);
   background: white;
+  color: var(--ink);
   border-radius: 50%;
   font-size: 1.05rem;
-  font-weight: 800;
-  box-shadow: 0 5px 14px rgba(35,50,79,.12);
+  font-weight: 700;
+  transition: background-color .12s ease;
 }
-.answer:hover:not(:disabled), .answer:focus-visible:not(:disabled) { border-color: #2258c7; background: #eef4ff; }
-.answer:disabled { cursor: default; opacity: .55; }
-.answer.selected { border-color: #2258c7; background: #dbe8ff; opacity: 1; }
+.answer:hover:not(:disabled), .answer:focus-visible:not(:disabled) { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); background: #eef6fb; z-index: 1; }
+.answer:disabled { cursor: default; background: #eceae4; border-color: #c9c5bb; color: #7b8794; }
+/* 選択中:青の塗り+濃い枠+内側の白い線+✓印(色だけに頼らない)。
+   枠は内側に描き、ボタンの大きさを変えない。z-indexで最前面に出し、画面が狭くて
+   ボタン同士が近いときも、枠と✓印が隣のボタンに隠れないようにする(後ろに並ぶボタンほど手前に描かれるため)。
+   拡大などにtransformを使うと位置計算が壊れるため、動きは付けない。 */
+.answer.selected { background: var(--blue); border-color: var(--ink); color: white; box-shadow: inset 0 0 0 3px white; z-index: 1; }
+.answer.selected::after {
+  content: "✓";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  font-size: .9rem;
+}
 
 @media (max-width: 650px) {
   /* 100vwから、カード周囲の余白(app-shellのmargin32px+screenのpadding最大48px)を
@@ -84,19 +249,17 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
      (%ではなくvwのままにする理由は上記コメント参照)。 */
   .answer-grid { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
   .answer { font-size: .95rem; }
+  .test-button::before { width: 60px; }
+  .test-description { margin-left: 60px; }
 }
 
-/* 相対音感の回答レイアウト比較用(仕様 relative-pitch-test-spec.md §11.2)。
+/* 相対音感の回答ボタン(仕様 relative-pitch-test-spec.md §11.2)。円環状に固定(2026-10-09)。
    絶対音感の.answer-grid/.answerとは名前を分け、混同・影響が起きないようにする。
-   2026-09-18: 比較候補をcircular・spiral・dual_ringの3つに入れ替え(gridは削除)。
    案内文(.status)と円環外側のボタンが重ならないよう、上余白を広げてある。 */
 .answer-panel { position: relative; margin: 90px auto 8px; }
 
-.answer-panel--circular,
-.answer-panel--spiral,
-.answer-panel--dual_ring {
-  /* .answer-gridと同じ理由(上記コメント参照)でvwのままにする。
-     3候補で同じ余白・ボタンサイズにし、配置(位置計算)だけの違いで比較できるようにする。 */
+.answer-panel--circular {
+  /* .answer-gridと同じ理由(上記コメント参照)でvwのままにする。 */
   --wheel-size: min(70vw, 430px);
   --button-size: clamp(56px, 11vw, 76px);
   width: var(--wheel-size);
@@ -104,7 +267,7 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
 }
 .answer-panel--circular {
   border-radius: 50%;
-  background: radial-gradient(circle, #f8fbff 0 42%, #eef4ff 43% 66%, transparent 67%);
+  background: radial-gradient(circle, white 0 40%, var(--sand) 41% 64%, #e6dcc6 65% 66%, transparent 67%);
 }
 .answer-panel--circular .answer-panel__button {
   position: absolute;
@@ -123,7 +286,7 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
    --iはこの2つについてそれぞれ12・13になるが、rotate(360deg)・rotate(390deg)は
    360度周期性によりrotate(0deg)・rotate(30deg)と同じ位置になるため、対応する音名
    (ド・ド#)と自動的に同じ角度になる。半径(translateY)だけ通常より大きくし、
-   ガイドリング等の装飾は付けない(dual_ringとの違い)。 */
+   ガイドリング等の装飾は付けない。 */
 .answer-panel--circular .answer-panel__button--extra {
   transform:
     translate(-50%, -50%)
@@ -132,61 +295,55 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
     rotate(calc(var(--i) * -30deg));
 }
 
-/* spiral(渦巻配置)・dual_ring(二重円環)は、半径が半音差ごとに連続的に変わったり、
-   単純な円に収まらなかったりするため、位置をJS(circular-answer-layout.js)で計算し、
-   ボタンのstyle属性へ直接left/top(%)を指定する。CSS側は絶対配置の土台だけを用意する
-   (--wheel-size・--button-sizeはcircularと共通のため、上のルールで指定済み)。 */
-.answer-panel--spiral .answer-panel__button,
-.answer-panel--dual_ring .answer-panel__button {
-  position: absolute;
-  width: var(--button-size);
-  height: var(--button-size);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-.answer-panel__guide {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-.answer-panel__guide path {
-  fill: none;
-  stroke: #dbe6f5;
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
 .answer-panel__button {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
-  border: 2px solid #b8c5d8;
+  border: 2px solid var(--line-strong);
   background: white;
+  color: var(--ink);
   /* 文字サイズをボタンサイズに連動させる(2026-09-18: スマホで文字盤が2行に折り返される
-     問題への対応)。--button-sizeはcircular/spiral/dual_ringで共有・レスポンシブなので、
+     問題への対応)。--button-sizeはレスポンシブなので、
      ボタンが小さくなれば文字サイズも自動的に追従する。 */
   font-size: calc(var(--button-size) * 0.22);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.1;
   min-height: 52px;
-  box-shadow: 0 5px 14px rgba(35,50,79,.12);
+  transition: background-color .12s ease;
 }
 .answer-panel__label-main,
 .answer-panel__label-alt { white-space: nowrap; }
-.answer-panel__label-alt { font-size: .68em; font-weight: 700; color: #536179; }
-.answer-panel__button:hover:not(:disabled), .answer-panel__button:focus-visible:not(:disabled) { border-color: #2258c7; background: #eef4ff; }
-.answer-panel__button:disabled { cursor: default; opacity: .55; }
-.answer-panel__button.selected { border-color: #2258c7; background: #dbe8ff; opacity: 1; }
+.answer-panel__label-alt { font-size: .68em; font-weight: 400; color: var(--muted); }
+/* 1オクターブ上の重複音は点線の枠で区別する(色だけに頼らない) */
+.answer-panel__button--extra { border-style: dashed; }
+.answer-panel__button:hover:not(:disabled), .answer-panel__button:focus-visible:not(:disabled) { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); background: #eef6fb; z-index: 1; }
+.answer-panel__button:disabled { cursor: default; background: #eceae4; border-color: #c9c5bb; color: #7b8794; }
+.answer-panel__button:disabled .answer-panel__label-alt { color: #7b8794; }
+.answer-panel__button.selected { background: var(--blue); border-color: var(--ink); color: white; box-shadow: inset 0 0 0 3px white; z-index: 1; }
+.answer-panel__button.selected .answer-panel__label-alt { color: white; }
+.answer-panel__button.selected::after {
+  content: "✓";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  font-size: .9rem;
+}
 
 @media (max-width: 650px) {
-  .answer-panel--circular,
-  .answer-panel--spiral,
-  .answer-panel--dual_ring { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
+  .answer-panel--circular { --wheel-size: min(calc(100vw - 110px), 360px); --button-size: clamp(50px, 14vw, 62px); }
   /* .answer-panel__buttonの文字サイズはcalc(var(--button-size) * 0.22)で連動するため、
      ここでの上書きは不要(--button-size自体がこのブレークポイントで小さくなる)。 */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+  * { transition: none !important; }
 }

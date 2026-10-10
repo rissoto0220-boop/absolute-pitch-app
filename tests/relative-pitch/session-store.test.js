@@ -28,12 +28,12 @@ function makeClock() {
 
 test("startSessionは新しいセッションを作り、test_type/test_versionを設定する(仕様18.1〜18.3)", () => {
   const storage = makeFakeStorage();
-  const { session, data } = startSession("P00001", { storage, now: makeClock(), generateId: () => "s1", answerLayout: "circular" });
+  const { session, data } = startSession("P00001", { storage, now: makeClock(), generateId: () => "s1" });
 
   assert.equal(session.sessionId, "s1");
   assert.equal(session.testType, "relative_pitch");
   assert.equal(session.testVersion, "simplified");
-  assert.equal(session.answerLayout, "circular");
+  assert.equal(session.answerLayout, "circular"); // 回答レイアウトは円環状に固定
   assert.equal(session.practiceStatus, null);
   assert.equal(session.sessionStatus, null);
   assert.deepEqual(session.generatedQuestionOrder, []);
